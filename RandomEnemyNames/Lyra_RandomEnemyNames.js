@@ -92,8 +92,8 @@ LyraVultur.RandomEnemyData.pronounsalways = JSON.parse(PluginManager.parameters(
 
 //Name init
 LyraVultur.RandomEnemyData.parseNamePool = function() {
-	var fs = require('fs');
-	var gameDir = process.mainModule.filename;
+	//var fs = require('fs');
+	//var gameDir = process.mainModule.filename;
 	var filePath = "data/";
 	
 	for (let fid = 0; fid < LyraVultur.RandomEnemyData.files.length; fid++) {
@@ -128,8 +128,8 @@ LyraVultur.RandomEnemyData.parseNamePool();
 
 //Pronoun init
 LyraVultur.RandomEnemyData.parsePronounPool = function() {
-	var fs = require('fs');
-	var gameDir = process.mainModule.filename;
+	//var fs = require('fs');
+	//var gameDir = process.mainModule.filename;
 	var filePath = "data/";
 	
 	for (let fid = 0; fid < LyraVultur.RandomEnemyData.pfiles.length; fid++) {
