@@ -4,7 +4,7 @@
 
 /*:
 @target MZ
-@plugindesc [v1.4] Assigns enemies random names and/or pronouns in battle.
+@plugindesc [v1.5] Assigns enemies random names and/or pronouns in battle.
 @author Lyra Vultur
 @url http://www.koutacles.com.au/
  
@@ -191,6 +191,7 @@ Game_Enemy.prototype.setup = function (enemyId, x, y) {
    this.randnamefile = $dataEnemies[enemyId].meta.NamePool || false;
    this.randnounfile = $dataEnemies[enemyId].meta.PronounPool || false;
    this.nodefaultname = $dataEnemies[enemyId].meta.NoDefaultName || false;
+   this.customname = "";
 };
 
 LyraVultur.RandomEnemyData.GameEnemyoriginalName = Game_Enemy.prototype.originalName;
@@ -198,7 +199,12 @@ Game_Enemy.prototype.originalName = function() {
 	//console.log(this.enemy().meta.NamePool);
     if (this.customname) {
 		if (LyraVultur.RandomEnemyData.pronounsalways == true) {
-			return this.customname.trim() + this.customnoun;
+			if (this.customnoun && this.customnoun != "undefined") {
+				return this.customname.trim() + this.customnoun;
+			}
+			else {
+				return this.customname.trim();
+			}
 		}
 		else {
 			return this.customname.trim();
@@ -214,7 +220,7 @@ Window_BattleEnemy.prototype.drawItem = function(index) {
     this.resetTextColor();
 	
 	let finalname = "";
-	//console.log(this._enemies[index]);
+	console.log(this._enemies[index]);
 	if (this._enemies[index].randnamefile != false) {
 		finalname = this._enemies[index].customname.trim();
 	}
