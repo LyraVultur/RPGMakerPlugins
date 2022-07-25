@@ -4,7 +4,7 @@
 
 /*:
 @target MZ
-@plugindesc [v1.0] Lets you tag events that can push past the player.
+@plugindesc [v1.1] Lets you tag events that can push past the player.
 @author Lyra Vultur
 @url http://www.koutacles.com.au/
  
@@ -16,7 +16,7 @@ MIT
 @text Show Debug Info
 @type boolean
 @default false
-@desc Will print debug info into the console. Playtest mode only.
+@desc Will print debug info into the console. Playtest mode only. Can be laggy.
 
 @param ce_swap
 @text Common Event On Swap
@@ -63,6 +63,7 @@ Add one of these tags to an event's note box:
 <pushPlayer>
 <shovePlayer>
 <movePlayer>
+<rudeMovePlayer>
 
 Swap will make the player and event swap places, letting the event
 carry on with their route.
@@ -73,10 +74,16 @@ walk 1 step forward. The event will only get stuck if the player is
 forced into a wall.
 Move will attempt to swap, but if it cannot it will push. If it cannot 
 push, it will shove.
+RudeMove will attempt to push, and if it cannot it will shove. It will
+never swap.
 
+Add as many or as few of these tags to an event's note box, in addition
+to one of the tags above:
 <mustFace>
-This additional tag will require the event to be facing the player in
-order to do anything.
+Will require the event to be facing the player in order to do anything.
+<politeMove>
+Will not swap or shove if the player is facing the event. Push already
+acts like this.
 
 MIT License - credit to "LyraVultur".
 https://github.com/LyraVultur/RPGMakerPlugins/blob/main/LICENSE
@@ -165,29 +172,47 @@ LyraVultur.OutOfMyWay.SafeModeCheckShove = function(x, y) {
 	return true;
 };
 
+LyraVultur.OutOfMyWay.IsPlayerFacing = function(x, y) {
+	let toface = LyraVultur.OutOfMyWay.DirToFaceTile(x, y);
+	
+	if (toface == $gamePlayer._direction) {
+		return true;
+	}
+	
+	return false;
+}
+
+LyraVultur.OutOfMyWay.PoliteCheck = function(x, y, b) {
+	if (b) {
+		return !LyraVultur.OutOfMyWay.IsPlayerFacing(x, y)
+	}
+	
+	return true;
+}
+
 LyraVultur.OutOfMyWay.DirToFaceTile = function(x, y) {
 	let d = $gamePlayer._direction;
 	let px = $gamePlayer._x;
 	let py = $gamePlayer._y;
 	
-	//same x, tile is to the right
+	//same y, tile is to the right
 	if (x > px && y == py) {
 		return 6;
 	}
 	
-	//same x, tile is to the left
+	//same y, tile is to the left
 	if (x < px && y == py) {
 		return 4;
 	}
 	
-	//same y, tile is above
+	//same x, tile is below
 	if (x == px && y > py) {
-		return 8;
+		return 2;
 	}
 	
-	//same y, tile is below
+	//same x, tile is above
 	if (x == px && y < py) {
-		return 2;
+		return 8;
 	}
 	
 	return d;
@@ -228,7 +253,7 @@ LyraVultur.OutOfMyWay.DoShove = function(x, y, x2, y2, d) {
 	$gamePlayer.forceMoveForward();
 };
 
-LyraVultur.OutOfMyWay.IsCloseEnough = function(x, y, x2, y2) {
+/* LyraVultur.OutOfMyWay.IsCloseEnough = function(x, y, x2, y2) {
 	let dx = Math.abs(x - x2);
 	let dy = Math.abs(y - y2);
 
@@ -251,7 +276,7 @@ LyraVultur.OutOfMyWay.IsCloseEnough = function(x, y, x2, y2) {
 	}
 	
 	return false;
-};
+}; */
 
 LyraVultur.OutOfMyWay.IsCloseEnoughToPly = function(event, mustface) {
 	let close = false;
@@ -365,7 +390,7 @@ Game_CharacterBase.prototype.canPass = function(x, y, d) {
 				}
 				
 				//<swapPlayer>
-				if ($gameMap.event(this._eventId).event().meta.swapPlayer && !$gamePlayer.isMoving()) {
+				if ($gameMap.event(this._eventId).event().meta.swapPlayer && !$gamePlayer.isMoving() && LyraVultur.OutOfMyWay.PoliteCheck(x, y, $gameMap.event(this._eventId).event().meta.politeMove)) {
 					//make sure it is the player that is in the way and not an npc
 					if ($gamePlayer.pos(x2, y2) && LyraVultur.OutOfMyWay.SafeModeCheck($gameMap.event(this._eventId)._x, $gameMap.event(this._eventId)._y)) {
 						LyraVultur.OutOfMyWay.DoSwap(x, y, x2, y2);
@@ -394,7 +419,7 @@ Game_CharacterBase.prototype.canPass = function(x, y, d) {
 				}
 				
 				//<shovePlayer>
-				if ($gameMap.event(this._eventId).event().meta.shovePlayer && !$gamePlayer.isMoving()) {
+				if ($gameMap.event(this._eventId).event().meta.shovePlayer && !$gamePlayer.isMoving() && LyraVultur.OutOfMyWay.PoliteCheck(x, y, $gameMap.event(this._eventId).event().meta.politeMove)) {
 					//make sure it is the player that is in the way and not an npc
 					if ($gamePlayer.pos(x2, y2) && LyraVultur.OutOfMyWay.SafeModeCheckShove(sx2, sy2)) {
 						if ($gamePlayer.canPassRoot($gamePlayer.x, $gamePlayer.y, d)) {
@@ -412,14 +437,15 @@ Game_CharacterBase.prototype.canPass = function(x, y, d) {
 				}
 				
 				//<movePlayer>
-				if ($gameMap.event(this._eventId).event().meta.movePlayer && !$gamePlayer.isMoving()) {
+				if (($gameMap.event(this._eventId).event().meta.movePlayer || $gameMap.event(this._eventId).event().meta.rudeMovePlayer) && !$gamePlayer.isMoving()) {
 					//make sure it is the player that is in the way and not an npc
 					if (!swapsuccess && !pushsuccess && !shovesuccess) {
 						if (Utils.isOptionValid('test') && LyraVultur.OutOfMyWay.printdebug) {
 							console.log(this._characterName + " trying to smart move player..");
 						}
 					}
-					if ($gamePlayer.pos(x2, y2) && LyraVultur.OutOfMyWay.SafeModeCheck($gameMap.event(this._eventId)._x, $gameMap.event(this._eventId)._y)) {
+					
+					if ($gamePlayer.pos(x2, y2) && !$gameMap.event(this._eventId).event().meta.rudeMovePlayer && LyraVultur.OutOfMyWay.SafeModeCheck($gameMap.event(this._eventId)._x, $gameMap.event(this._eventId)._y)) {
 						LyraVultur.OutOfMyWay.DoSwap(x, y, x2, y2);
 						
 						swapsuccess = true;
