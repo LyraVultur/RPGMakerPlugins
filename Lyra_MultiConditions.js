@@ -27,7 +27,8 @@ MIT
 @text Global Ignore
 @type boolean
 @default false
-@desc If true, ignores all multiconditions (they return true). Can be changed in-game with a plugin command.
+@desc If true, ignores all multiconditions (they return true). Can be changed 
+in-game with a plugin command.
 
 @command IgnoreMultiConditions
 @text Set Global Ignore Mode
@@ -47,6 +48,14 @@ simply add a comment to an event's page:
 Replace id with the name that you gave the condition.
 Note that for the page to be displayed, all the page's regular conditions AND  
 this plugin's multi-conditions need to be true!
+
+If Global Ignore mode is set to true (can be changed by plugin command), then ALL
+multiconditions will always return true. Can be useful for complex setups.
+
+As well as testing against set numbers, variables, javascript, and switches, you 
+can also check what the current time is. Very useful for making time-sensitive 
+events and NPCs! Note that this requires the current hour and mins (for instance, 
+from the Community Lighting plugin) to be at a variable the plugin can read.
 
 MIT License - credit to "LyraVultur".
 https://github.com/LyraVultur/RPGMakerPlugins/blob/main/LICENSE
@@ -319,7 +328,7 @@ LyraVultur.MultiConditions.parseUserConditions();
 
 //==========Command binds
 PluginManager.registerCommand('Lyra_MultiConditions', 'IgnoreMultiConditions', args => {
-	const arg0 = Boolean(args.desc);
+	const arg0 = JSON.parse(args.desc);
 	
 	LyraVultur.MultiConditions.setIgnoreMode(arg0);
 });
