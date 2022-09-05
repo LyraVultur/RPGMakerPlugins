@@ -4,7 +4,7 @@
 
 /*:
 @target MZ
-@plugindesc [v1.0] Calls a scene to enter name, pronouns, etc for actors.
+@plugindesc [v1.1] Calls a scene to enter name, pronouns, etc for actors.
 @author Lyra Vultur
 @url http://www.koutacles.com.au/
  
@@ -1093,12 +1093,15 @@ Scene_Name.prototype.start = function() {
     Scene_MenuBase.prototype.start.call(this);
     this._editWindow.refresh();
 	
-	this._buttonAssistWindow.frameVisible = this._showFrames;
-	this._buttonAssistWindow._openness = this._showHelp ? 255 : 0;
 	let trans = this._showWindowBacks ? 255 : 0;
 	this._inputWindow.opacity = trans;
 	this._editWindow.opacity = trans;
-	this._buttonAssistWindow.opacity = trans;
+	
+	if (this._buttonAssistWindow) {
+		this._buttonAssistWindow.frameVisible = this._showFrames;
+		this._buttonAssistWindow._openness = this._showHelp ? 255 : 0;
+		this._buttonAssistWindow.opacity = trans;
+	}
 };
 
 //==========Window_NameInput handling
