@@ -4,7 +4,7 @@
 
 /*:
 @target MZ
-@plugindesc [v1.1] Calls a scene to enter name, pronouns, etc for actors.
+@plugindesc [v1.2] Calls a scene to enter name, pronouns, etc for actors.
 @author Lyra Vultur
 @url http://www.koutacles.com.au/
  
@@ -686,7 +686,7 @@ PluginManager.registerCommand('Lyra_PartyPronouns', 'ShowVariableEntry', args =>
 	finalvar = Math.max(0, finalvar);
 	LyraVultur.PartyPronouns.varWriteTo = finalvar;
 	
-	LyraVultur.PartyPronouns.defaulttext = $gameVariables.value(finalvar);
+	LyraVultur.PartyPronouns.defaulttext = $gameVariables.value(finalvar).toString();
 	LyraVultur.PartyPronouns.outputTo = "variable";
 	LyraVultur.PartyPronouns.showNameScene(0, LyraVultur.PartyPronouns.showinputface, LyraVultur.PartyPronouns.maxcharsvar)
 });
@@ -1279,6 +1279,9 @@ Window_NameEdit.prototype.setup = function(actor, maxLength, face, showframes) {
     this._maxLength = maxLength;
 	if (LyraVultur.PartyPronouns.defaulttext == "" && LyraVultur.PartyPronouns.outputTo != "nickname") {
 		this._name = actor.name().slice(0, this._maxLength);
+	}
+	else if (LyraVultur.PartyPronouns.defaulttext == "" && LyraVultur.PartyPronouns.outputTo == "variable") {
+		//
 	}
 	else {
 		this._name = LyraVultur.PartyPronouns.defaulttext.slice(0, this._maxLength);
