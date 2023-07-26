@@ -4,7 +4,7 @@
 
 /*:
 @target MZ
-@plugindesc [v1.2] Lets you tag events that can push past the player.
+@plugindesc [v1.21] Lets you tag events that can push past the player.
 @author Lyra Vultur
 @url http://www.koutacles.com.au/
  
@@ -299,7 +299,7 @@ Game_CharacterBase.prototype.isSwapWalkValid = function() {
 Game_CharacterBase.prototype.isDashPlayerForceSwapValid = function() {
 	if (this._eventId) {
 		if ($gameMap.event(this._eventId).event().meta.dashPlyForce) {
-			console.log(LyraVultur.OutOfMyWay.LastFrameDash);
+			//console.log(LyraVultur.OutOfMyWay.LastFrameDash);
 			return LyraVultur.OutOfMyWay.LastFrameDash;
 		}
 		
@@ -462,6 +462,10 @@ Game_CharacterBase.prototype.canPass = function(x, y, d) {
 					donecheck = true;
 				}
 				
+				if (!donecheck) {
+					pass = false;
+				}
+				
 				if (Utils.isOptionValid('test') && LyraVultur.OutOfMyWay.printdebug) {
 					console.log($gameMap.event(hitcheck[0]._eventId).event().meta);
 				}
@@ -472,7 +476,7 @@ Game_CharacterBase.prototype.canPass = function(x, y, d) {
 	//major checks
 	if (!donecheck) {
 		if (hitcheckchar.isCollidedWithCharacters(x2, y2) || (!hitcheckchar.isMoving() && playerdashforcetrigger)) {
-			//make sure that we are an npc and not the player, and that we are close enough to push
+			//make sure that we are an npc and not the player, and that we are close enough
 			if (hitcheckchar._eventId && hitcheckchar.isSwapDashValid() && hitcheckchar.isSwapWalkValid() && LyraVultur.OutOfMyWay.IsCloseEnoughToPly(hitcheckchar, $gameMap.event(hitcheckchar._eventId).event().meta.mustFace)) {
 				if (Utils.isOptionValid('test') && LyraVultur.OutOfMyWay.printdebug) {
 					console.log(hitcheckchar._characterName + " event pos: " + hitcheckchar._x + "/" + hitcheckchar._y + " ply pos:" + $gamePlayer._x + "/" + $gamePlayer._y);
@@ -511,10 +515,10 @@ Game_CharacterBase.prototype.canPass = function(x, y, d) {
 				}
 				
 				//<shovePlayer>
-				if ($gameMap.event(hitcheckchar._eventId).event().meta.shovePlayer && (!$gamePlayer.isMoving() || playerdashforcetrigger) && LyraVultur.OutOfMyWay.PoliteCheck(x, y, $gameMap.event(hitcheckchar._eventId).event().meta.politeMove)) {
+				if ($gameMap.event(hitcheckchar._eventId).event().meta.shovePlayer && (playerdashforcetrigger || !$gamePlayer.isMoving()) && LyraVultur.OutOfMyWay.PoliteCheck(x, y, $gameMap.event(hitcheckchar._eventId).event().meta.politeMove)) {
 					//make sure it is the player that is in the way and not an npc
 					if (($gamePlayer.pos(x2, y2) || playerdashforcetrigger) && LyraVultur.OutOfMyWay.SafeModeCheckShove(sx2, sy2)) {
-						if ($gamePlayer.canPassRoot($gamePlayer.x, $gamePlayer.y, $gamePlayer.d) || (playerdashforcetrigger && $gamePlayer.canPassRoot($gamePlayer.x, $gamePlayer.y, $gamePlayer.reverseDir(d)))) {
+						if ($gamePlayer.canPassRoot($gamePlayer.x, $gamePlayer.y, hitcheckchar.direction()) || (playerdashforcetrigger && $gamePlayer.canPassRoot($gamePlayer.x, $gamePlayer.y, $gamePlayer.reverseDir(d)))) {
 							if (playerdashforcetrigger) {
 								//hitcheckchar.turnTowardPlayer();
 								//$gamePlayer.setPosition($gamePlayer._x, $gamePlayer._y);
@@ -584,9 +588,14 @@ Game_CharacterBase.prototype.canPass = function(x, y, d) {
 				}
 			}
 			else {
+				console.log("ply couldnt walk");
 				pass = false;
 				donecheck = true;
 			}
+		}
+		else if (playerdashforcetrigger) {
+			pass = false;
+			console.log("is this meant to happen?");
 		}
 	}
 	
