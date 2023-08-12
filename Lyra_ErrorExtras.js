@@ -95,7 +95,7 @@ LyraVultur.ErrorExtras.checkImagePath = function() {
 LyraVultur.ErrorExtras.checkImagePath();
 
 LyraVultur.ErrorExtras.testError = function(text) {
-	throw new Error(text);
+	SceneManager.onError("sgdfgdfgfg");
 };
 
 //Add our settings
@@ -132,28 +132,50 @@ Graphics._makeErrorHtml = function(name, message, error) {
 		errbg = '<style>body{background-image: url(\'' + LyraVultur.ErrorExtras.imgpath + '.png\');}</style>';
 	}
 	
+	const hasmsg = !!message && message != '';
+	
 	if (Utils.RPGMAKER_NAME === "MZ") {
+		let mzmessage = message;
+		
 		const nameDiv = document.createElement("div");
 		const messageDiv = document.createElement("div");
+		const stackDiv = document.createElement("div");
 		nameDiv.id = "errorName";
 		messageDiv.id = "errorMessage";
+		stackDiv.id = "stackMessage";
+		stackDiv.style.height = "240px";
+		stackDiv.style.overflow = "auto";
+		
+		console.log(error, LyraVultur.ErrorExtras.verbose);
+		
+		if (error && error.stack && LyraVultur.ErrorExtras.verbose === true) {
+			mzmessage = mzmessage;
+		}
+		else if (hasmsg && LyraVultur.ErrorExtras.verbose === true) {
+			mzmessage = mzmessage + ' [no stack trace available]';
+		}
+		
 		nameDiv.innerHTML = Utils.escapeHtml(name || "");
-		messageDiv.innerHTML = Utils.escapeHtml(message || "");
+		messageDiv.innerHTML = Utils.escapeHtml(mzmessage || "");
+		if (error && error.stack && LyraVultur.ErrorExtras.verbose === true) {
+			stackDiv.innerHTML = Utils.escapeHtml(error.stack || "");
+			messageDiv.appendChild(stackDiv);
+		}
 		
 		return errbg + nameDiv.outerHTML + messageDiv.outerHTML;
 	}
 	
-	if (name && error && error.stack && LyraVultur.ErrorExtras.verbose === true) {
+	if (hasmsg && error && error.stack && LyraVultur.ErrorExtras.verbose === true) {
 		return (errbg +
 			'<font color="yellow"><b>' + name + '</b></font><br>' +
             '<font color="white">' + error.stack + '</font><br>');
 	}
-	else if (name && LyraVultur.ErrorExtras.verbose === true) {
+	else if (hasmsg && LyraVultur.ErrorExtras.verbose === true) {
 		return (errbg +
 			'<font color="yellow"><b>' + name + '</b></font><br>' +
             '<font color="white">' + message + ' [no stack trace available]</font><br>');
 	}
-	else if (name) {
+	else if (hasmsg) {
 		return (errbg +
 				'<font color="yellow"><b>' + name + '</b></font><br>' +
 				'<font color="white">' + message + '</font><br>');
