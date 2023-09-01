@@ -4,7 +4,7 @@
 
 /*:
 @target MZ
-@plugindesc [v1.0] Lets you have notetags read in from external JSON files.
+@plugindesc [v1.1] Lets you have notetags read in from external JSON files.
 @author Lyra Vultur
 @url http://www.koutacles.com.au/
  
@@ -85,6 +85,28 @@ DataManager.extractArrayMetadata = function(array) {
 		
 		LyraVultur.originalDataManager_extractArrayMetadata.call(this, array);
     }
+};
+
+LyraVultur.originalDataManager_extractMetadata = DataManager.extractMetadata;
+DataManager.extractMetadata = function(data) {
+	let newnote = {};
+	
+	if (DataManager.isMapObject(data)) {
+		if (data && "note" in data && data.note != "" && LyraVultur.ExNote.hasExNoteData(data.note)) {
+			newnote = data.note;
+			const expanded = LyraVultur.ExNote.extractExternalFileNames(data.note);
+			
+			for (file of expanded) {
+				let filedata = LyraVultur.ExNote.extractExternalFileData(file);
+				
+				newnote = newnote.concat('\n', filedata.join('\n'));
+			}
+		
+			data.note = newnote;
+		}
+	}
+	
+	LyraVultur.originalDataManager_extractMetadata.call(this, data);
 };
 
 LyraVultur.ExNote.extractExternalFileNames = function(note) {
