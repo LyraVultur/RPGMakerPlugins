@@ -4,7 +4,7 @@
 
 /*:
 @target MZ
-@plugindesc [v1.0] Allow you to automatically turn on/off a switch when entering/exiting a map.
+@plugindesc [v1.1] Allow you to automatically turn on/off a switch when entering/exiting a map.
 @author Lyra Vultur
 @url http://www.koutacles.com.au/
  
@@ -68,6 +68,10 @@ LyraVultur.MapNoteSwitches.printdebug = JSON.parse(PluginManager.parameters('Lyr
 
 LyraVultur.MapNoteSwitches.Aliases = new Map();
 
+LyraVultur.MapNoteSwitches._tempSwitches = new Array();
+LyraVultur.MapNoteSwitches._tempAliases = new Array();
+LyraVultur.MapNoteSwitches._tempUnifiedData = new Array();
+
 LyraVultur.MapNoteSwitches.parseAliases = function() {
 	if (!PluginManager.parameters('Lyra_MapNoteSwitches')['aliases']) {
 		return new Map();
@@ -96,48 +100,49 @@ LyraVultur.MapNoteSwitches.origGame_PlayerperformTransfer = Game_Player.prototyp
 Game_Player.prototype.performTransfer = function() {
     if (this.isTransferring()) {
         if (this._newMapId !== $gameMap.mapId() || this._needsMapReload) {
-			if (!!$gameMap._prevSwitchId) {
-				$gameSwitches.setValue($gameMap._prevSwitchId, $gameMap._prevSwitchState);
-				
-				if (LyraVultur.MapNoteSwitches.printdebug) {
-					console.log("[MapNoteSwitches] Change switch to former state:", $gameMap._prevSwitchId, $gameMap._prevSwitchState);
-				}
+			if (!$gameMap._prevSwitchStates) {
+				$gameMap._prevSwitchStates = new Map();
 			}
 			
-            if (LyraVultur.MapNoteSwitches.hasMapNoteSwitchData($dataMap.note) || LyraVultur.MapNoteSwitches.hasMapNoteSwitchAliasData($dataMap.note)) {
-				let curmapswitchtype = "none";
-				let curmapswitchnum = 0;
-				
-				if (LyraVultur.MapNoteSwitches.hasMapNoteSwitchData($dataMap.note)) {
-					curmapswitchtype = LyraVultur.MapNoteSwitches.getMapNoteSwitchData($dataMap.note)[1];
-					curmapswitchnum = Number(LyraVultur.MapNoteSwitches.getMapNoteSwitchData($dataMap.note)[2]);
-				}
-				else if (LyraVultur.MapNoteSwitches.Aliases.size > 0) {
-					curmapswitchtype = LyraVultur.MapNoteSwitches.getMapNoteSwitchAliasData($dataMap.note)[1];
-					curmapswitchnum = LyraVultur.MapNoteSwitches.getMapNoteSwitchAliasData($dataMap.note)[2];
-					
-					curmapswitchnum = LyraVultur.MapNoteSwitches.Aliases.get(curmapswitchnum);
+			if ($gameMap?._prevSwitchStates?.size > 0) {
+				Array.from($gameMap._prevSwitchStates.keys()).forEach(restore => {
+					$gameSwitches.setValue(Number(restore), !!$gameMap._prevSwitchStates.get(Number(restore)));
 					
 					if (LyraVultur.MapNoteSwitches.printdebug) {
-						console.log("[MapNoteSwitches] Parsed alias:", LyraVultur.MapNoteSwitches.getMapNoteSwitchAliasData($dataMap.note)[2], curmapswitchnum);
+						console.log("[MapNoteSwitches] Change switch to former state:", Number(restore), !!$gameMap._prevSwitchStates.get(Number(restore)));
 					}
-				}
-				
+				});
+			}
+			
+			//cleanse old data
+			$gameMap._prevSwitchStates.clear();
+			
+			LyraVultur.MapNoteSwitches._tempUnifiedData = LyraVultur.MapNoteSwitches.getUnifiedMapNoteSwitchData($dataMap.note);
+			
+            if (!!$gameMap && LyraVultur.MapNoteSwitches?._tempUnifiedData?.length > 0) {
 				if (LyraVultur.MapNoteSwitches.printdebug) {
-					console.log("[MapNoteSwitches] Read notetag:", curmapswitchtype, curmapswitchnum);
+					console.log("[MapNoteSwitches] Found switch data in map notes:", LyraVultur.MapNoteSwitches._tempUnifiedData);
 				}
 				
-				if (LyraVultur.MapNoteSwitches.isTemp(curmapswitchtype)) {
-					$gameMap._prevSwitchId = curmapswitchnum;
-					$gameMap._prevSwitchState = $gameSwitches.value(curmapswitchnum);
-				}
-				else {
-					$gameMap._prevSwitchId = 0;
-					$gameMap._prevSwitchState = false;
-				}
-				
-				if (curmapswitchtype != "none") {
-					$gameSwitches.setValue(curmapswitchnum, LyraVultur.MapNoteSwitches.noteToBoolean(curmapswitchtype, curmapswitchnum));
+				if (LyraVultur.MapNoteSwitches?._tempUnifiedData?.length > 0) {
+					LyraVultur.MapNoteSwitches?._tempUnifiedData.forEach(tag => {
+						let id = Number(tag.groups.id);
+						let al = tag.groups.alias;
+						let bo = Boolean($gameSwitches.value(id));
+						
+						//Parse aliases into regular switches
+						if (al != null && al != "" && LyraVultur.MapNoteSwitches.Aliases.size > 0) {
+							id = Number(LyraVultur.MapNoteSwitches.Aliases.get(al));
+						}
+						
+						//Save current state if temporary
+						if (tag.groups.type.endsWith("temp")) {
+							$gameMap._prevSwitchStates.set(id, $gameSwitches.value(id));
+						}
+						
+						//Make changes to switch
+						$gameSwitches.setValue(id, LyraVultur.MapNoteSwitches.noteToBoolean(tag.groups.type, $gameSwitches.value(id)));
+					});
 				}
 			}
         }
@@ -165,36 +170,18 @@ LyraVultur.MapNoteSwitches.noteToBoolean = function(note2, note3) {
 	return false;
 };
 
-LyraVultur.MapNoteSwitches.isTemp = function(note2) {
-	const input = note2.toLowerCase();
+LyraVultur.MapNoteSwitches.getUnifiedMapNoteSwitchData = function(note) {
+	const rx = /^<switch\s(?<type>[a-zA-Z]+)\s(?:(?<alias>[a-zA-Z]+)|(?<id>\d+))>$/gmi;
 	
-	if (input.endsWith("temp")) {
-		return true;
-	}
+	let m;
+	let result = new Array();
 	
-	return false;
-};
-
-LyraVultur.MapNoteSwitches.hasMapNoteSwitchData = function(note) {
-	const rx = /<switch\s([a-zA-Z]+)\s(\d+)>/gi;
+	do {
+		m = rx.exec(note);
+		if (m) {
+			result.push(m);
+		}
+	} while (m);
 	
-	return rx.test(note);
-};
-
-LyraVultur.MapNoteSwitches.getMapNoteSwitchData = function(note) {
-	const rx = /<switch\s([a-zA-Z]+)\s(\d+)>/gi;
-	
-	return rx.exec(note);
-};
-
-LyraVultur.MapNoteSwitches.hasMapNoteSwitchAliasData = function(note) {
-	const rx = /<switch\s([a-zA-Z]+)\s([a-zA-Z]+)>/gi;
-	
-	return rx.test(note);
-};
-
-LyraVultur.MapNoteSwitches.getMapNoteSwitchAliasData = function(note) {
-	const rx = /<switch\s([a-zA-Z]+)\s([a-zA-Z]+)>/gi;
-	
-	return rx.exec(note);
+	return result;
 };
