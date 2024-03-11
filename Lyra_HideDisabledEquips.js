@@ -35,7 +35,7 @@ MIT
     @default true
 
 @help 
-dfgjdfgldlfkgjdflgjkdflkgjdfklgjdflkgjdfklgjdklfgjdlfkgjdklfgjdklfgjldkfgk
+Hides disabled equipment from the equip screen when enabled.
 
 MIT License - credit to "LyraVultur".
 https://github.com/LyraVultur/RPGMakerPlugins/blob/main/LICENSE
