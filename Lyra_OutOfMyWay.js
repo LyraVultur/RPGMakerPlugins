@@ -4,7 +4,7 @@
 
 /*:
 @target MZ
-@plugindesc [v1.21] Lets you tag events that can push past the player.
+@plugindesc [v1.3] Lets you tag events that can push past the player.
 @author Lyra Vultur
 @url http://www.koutacles.com.au/
  
@@ -54,6 +54,30 @@ MIT
 @default false
 @desc If true player will not be shoved into a space with any events, even ones with Through ON.
 
+@command LyraSafeModeSwap
+@text Change Safe Mode (Swap)
+@desc If true player will not be swapped into a space with any events other than the swapper, even ones with Through ON.
+	@arg safestatus
+	@text Safe Mode?
+	@type boolean
+	@default true
+	
+@command LyraSafeModePush
+@text Change Safe Mode (Push)
+@desc If true player will not be pushed into a space with any events, even ones with Through ON.
+	@arg safestatus
+	@text Safe Mode?
+	@type boolean
+	@default false
+	
+@command LyraSafeModeShove
+@text Change Safe Mode (Shove)
+@desc If true player will not be shoved into a space with any events, even ones with Through ON.
+	@arg safestatus
+	@text Safe Mode?
+	@type boolean
+	@default false
+
 @help 
 This lets you tag events to be able to politely swap places with the
 player, or tag ones that rudely shove the player away.
@@ -102,6 +126,13 @@ If you want different effects if the player is dashing, you can check in
 the common event if the player was dashing with $gamePlayer.isDashing() 
 inside a Conditional Branch.
 
+<pushLength: x>
+Will make the push/shove done by this event push the player x.
+Default for x is 1.
+<unsafePush>
+Will allow the event to push/shove the player into walls and the like.
+This can get them stuck.
+
 MIT License - credit to "LyraVultur".
 https://github.com/LyraVultur/RPGMakerPlugins/blob/main/LICENSE
 
@@ -137,6 +168,26 @@ LyraVultur.OutOfMyWay.safemodeshove = Boolean(PluginManager.parameters('Lyra_Out
 
 LyraVultur.OutOfMyWay.LastFrameDash = false;
 
+//Command Binds
+PluginManager.registerCommand('Lyra_OutOfMyWay', 'LyraSafeModeSwap', args => {
+	const arg0 = Boolean(args.safestatus);
+	
+	LyraVultur.OutOfMyWay.safemode = arg0;
+});
+
+PluginManager.registerCommand('Lyra_OutOfMyWay', 'LyraSafeModePush', args => {
+	const arg0 = Boolean(args.safestatus);
+	
+	LyraVultur.OutOfMyWay.safemodepush = arg0;
+});
+
+PluginManager.registerCommand('Lyra_OutOfMyWay', 'LyraSafeModeShove', args => {
+	const arg0 = Boolean(args.safestatus);
+	
+	LyraVultur.OutOfMyWay.safemodeshove = arg0;
+});
+
+//General
 LyraVultur.OutOfMyWay.SafeModeCheck = function(x, y) {
 	//console.log("Events: " + $gameMap.eventsXy(x, y).length);
 	
@@ -249,27 +300,33 @@ LyraVultur.OutOfMyWay.DoSwap = function(x, y, x2, y2) {
 	$gamePlayer.forceMoveForward();
 };
 
-LyraVultur.OutOfMyWay.DoPush = function(x, y, x2, y2) {
+LyraVultur.OutOfMyWay.DoPush = function(x, y, x2, y2, dist = 1) {
+	dist = Math.max(dist, 1);
 	if (Utils.isOptionValid('test') && LyraVultur.OutOfMyWay.printdebug) {
-		console.log("pushed player");
+		console.log("pushed player " + dist);
 	}
 	
 	if (LyraVultur.OutOfMyWay.ce_push > 0) {
 		$gameTemp.reserveCommonEvent(LyraVultur.OutOfMyWay.ce_push);
 	}
-	$gamePlayer.forceMoveForward();
+	for (let i = 0; i < dist; i++) {
+		$gamePlayer.forceMoveForward();
+	}
 };
 
-LyraVultur.OutOfMyWay.DoShove = function(x, y, x2, y2, d) {
+LyraVultur.OutOfMyWay.DoShove = function(x, y, x2, y2, d, dist = 1) {
+	dist = Math.max(dist, 1);
 	if (Utils.isOptionValid('test') && LyraVultur.OutOfMyWay.printdebug) {
-		console.log("shoved player");
+		console.log("shoved player " + dist);
 	}
 	
 	if (LyraVultur.OutOfMyWay.ce_shove > 0) {
 		$gameTemp.reserveCommonEvent(LyraVultur.OutOfMyWay.ce_shove);
 	}
 	$gamePlayer._direction = d;
-	$gamePlayer.forceMoveForward();
+	for (let i = 0; i < dist; i++) {
+		$gamePlayer.forceMoveForward();
+	}
 };
 
 Game_CharacterBase.prototype.isSwapDashValid = function() {
@@ -420,6 +477,8 @@ Game_CharacterBase.prototype.canPass = function(x, y, d) {
 	
 	let hitcheckchar = this;
 	
+	let pushdist = 1;
+	
 	//map tile exists?
 	if (!donecheck) {
 		if (!$gameMap.isValid(x2, y2)) {
@@ -500,8 +559,9 @@ Game_CharacterBase.prototype.canPass = function(x, y, d) {
 				if ($gameMap.event(hitcheckchar._eventId).event().meta.pushPlayer && (!$gamePlayer.isMoving() || playerdashforcetrigger)) {
 					//make sure it is the player that is in the way and not an npc
 					if ($gamePlayer.pos(x2, y2) && !playerdashforcetrigger && LyraVultur.OutOfMyWay.SafeModeCheckPush(px2, py2)) {
-						if ($gamePlayer.canPassRoot($gamePlayer.x, $gamePlayer.y, $gamePlayer._direction)) {
-							LyraVultur.OutOfMyWay.DoPush(x, y, x2, y2);
+						if ($gamePlayer.canPassRoot($gamePlayer.x, $gamePlayer.y, $gamePlayer._direction) || $gameMap.event(hitcheckchar._eventId).event().meta.unsafePush) {
+							pushdist = Number(String($gameMap.event(hitcheckchar._eventId).event().meta.pushLength).trim());
+							LyraVultur.OutOfMyWay.DoPush(x, y, x2, y2, pushdist);
 							
 							pass = true;
 							donecheck = true;
@@ -518,16 +578,17 @@ Game_CharacterBase.prototype.canPass = function(x, y, d) {
 				if ($gameMap.event(hitcheckchar._eventId).event().meta.shovePlayer && (playerdashforcetrigger || !$gamePlayer.isMoving()) && LyraVultur.OutOfMyWay.PoliteCheck(x, y, $gameMap.event(hitcheckchar._eventId).event().meta.politeMove)) {
 					//make sure it is the player that is in the way and not an npc
 					if (($gamePlayer.pos(x2, y2) || playerdashforcetrigger) && LyraVultur.OutOfMyWay.SafeModeCheckShove(sx2, sy2)) {
-						if ($gamePlayer.canPassRoot($gamePlayer.x, $gamePlayer.y, hitcheckchar.direction()) || (playerdashforcetrigger && $gamePlayer.canPassRoot($gamePlayer.x, $gamePlayer.y, $gamePlayer.reverseDir(d)))) {
+						if ($gamePlayer.canPassRoot($gamePlayer.x, $gamePlayer.y, hitcheckchar.direction()) || (playerdashforcetrigger && $gamePlayer.canPassRoot($gamePlayer.x, $gamePlayer.y, $gamePlayer.reverseDir(d))) || $gameMap.event(hitcheckchar._eventId).event().meta.unsafePush) {
+							pushdist = Number(String($gameMap.event(hitcheckchar._eventId).event().meta.pushLength).trim());
 							if (playerdashforcetrigger) {
 								//hitcheckchar.turnTowardPlayer();
 								//$gamePlayer.setPosition($gamePlayer._x, $gamePlayer._y);
 								
-								LyraVultur.OutOfMyWay.DoShove(x, y, x2, y2, hitcheckchar.reverseDir(d));
+								LyraVultur.OutOfMyWay.DoShove(x, y, x2, y2, hitcheckchar.reverseDir(d), pushdist);
 								$gamePlayer.setPosition($gamePlayer._x, $gamePlayer._y);
 							}
 							else {
-								LyraVultur.OutOfMyWay.DoShove(x, y, x2, y2, d);
+								LyraVultur.OutOfMyWay.DoShove(x, y, x2, y2, d, pushdist);
 							}
 							
 							pass = true;
@@ -588,7 +649,7 @@ Game_CharacterBase.prototype.canPass = function(x, y, d) {
 				}
 			}
 			else {
-				console.log("ply couldnt walk");
+				//console.log("ply couldnt walk");
 				pass = false;
 				donecheck = true;
 			}
