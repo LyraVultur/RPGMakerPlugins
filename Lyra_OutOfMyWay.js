@@ -4,7 +4,7 @@
 
 /*:
 @target MZ
-@plugindesc [v1.3] Lets you tag events that can push past the player.
+@plugindesc [v1.4] Lets you tag events that can push past the player.
 @author Lyra Vultur
 @url http://www.koutacles.com.au/
  
@@ -168,24 +168,26 @@ LyraVultur.OutOfMyWay.safemodeshove = Boolean(PluginManager.parameters('Lyra_Out
 
 LyraVultur.OutOfMyWay.LastFrameDash = false;
 
-//Command Binds
-PluginManager.registerCommand('Lyra_OutOfMyWay', 'LyraSafeModeSwap', args => {
-	const arg0 = Boolean(args.safestatus);
-	
-	LyraVultur.OutOfMyWay.safemode = arg0;
-});
+//Command Binds (MZ only)
+if (Utils.RPGMAKER_NAME == "MZ") {
+	PluginManager.registerCommand('Lyra_OutOfMyWay', 'LyraSafeModeSwap', args => {
+		const arg0 = Boolean(args.safestatus);
+		
+		LyraVultur.OutOfMyWay.safemode = arg0;
+	});
 
-PluginManager.registerCommand('Lyra_OutOfMyWay', 'LyraSafeModePush', args => {
-	const arg0 = Boolean(args.safestatus);
-	
-	LyraVultur.OutOfMyWay.safemodepush = arg0;
-});
+	PluginManager.registerCommand('Lyra_OutOfMyWay', 'LyraSafeModePush', args => {
+		const arg0 = Boolean(args.safestatus);
+		
+		LyraVultur.OutOfMyWay.safemodepush = arg0;
+	});
 
-PluginManager.registerCommand('Lyra_OutOfMyWay', 'LyraSafeModeShove', args => {
-	const arg0 = Boolean(args.safestatus);
-	
-	LyraVultur.OutOfMyWay.safemodeshove = arg0;
-});
+	PluginManager.registerCommand('Lyra_OutOfMyWay', 'LyraSafeModeShove', args => {
+		const arg0 = Boolean(args.safestatus);
+		
+		LyraVultur.OutOfMyWay.safemodeshove = arg0;
+	});
+}
 
 //General
 LyraVultur.OutOfMyWay.SafeModeCheck = function(x, y) {
@@ -508,7 +510,7 @@ Game_CharacterBase.prototype.canPass = function(x, y, d) {
 		if (LyraVultur.OutOfMyWay.LastFrameDash && this instanceof Game_Player && this.isCollidedWithCharacters(x2, y2)) {
 			hitcheck = $gameMap.eventsXyNt(x2, y2);
 			
-			if (hitcheck?.length > 0) {
+			if (hitcheck && hitcheck.length > 0) {
 				hitcheckchar = hitcheck[0];
 				const metadata = $gameMap.event(hitcheckchar._eventId).event().meta;
 				
