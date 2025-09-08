@@ -179,11 +179,11 @@ LyraVultur.AltAudio.Initialise = function() {
 LyraVultur.AltAudio.Initialise();
 
 //==========Helper Functions and Command binds
-LyraVultur.AltAudio.Scene_Title_start = Scene_Title.prototype.start;
-Scene_Map.prototype.start = function() {
+/*LyraVultur.AltAudio.Scene_Title_start = Scene_Title.prototype.start;
+Scene_Title.prototype.start = function() {
 	LyraVultur.AltAudio.bgmTitle = $dataSystem.titleBgm;
     LyraVultur.AltAudio.Scene_Title_start.call(this);
-};
+};*/
 
 LyraVultur.AltAudio.Scene_Map_start = Scene_Map.prototype.start;
 Scene_Map.prototype.start = function() {
@@ -349,7 +349,7 @@ SoundManager.loadSystemSound = function(n) {
 };
 
 //For some reason calling play from the command interpreter just appends the name when called repeatedly instead of making a new object?
-Game_Interpreter.prototype.command241 = function(params) {
+/*Game_Interpreter.prototype.command241 = function(params) {
 	if (params[0]?.altered) {
 		if (LyraVultur.AltAudio.printdebug) {
 			console.log("[AltAudio] trying to pass in a BGM that is already altered! attempting to fix..");
@@ -419,7 +419,7 @@ Game_Interpreter.prototype.command250 = function(params) {
 	}
 
     return true;
-};
+};*/
 
 //If the file doesn't exist in the subfolder, check for one in the root. Otherwise, throw the normal load error
 LyraVultur.AltAudio.CheckExists = function(folder, name) {
