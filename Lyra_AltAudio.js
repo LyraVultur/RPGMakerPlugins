@@ -4,7 +4,7 @@
 
 /*:
 @target MZ
-@plugindesc [v1.0] Change the entire soundtrack to alternate ones easily.
+@plugindesc [v1.1] Change the entire soundtrack to alternate ones easily.
 @author Lyra Vultur
 @url http://www.koutacles.com.au/
  
@@ -58,6 +58,12 @@ MIT
 @type boolean
 @default false
 @desc If on, will cause the map's music to reload when the subfolder changes.
+
+@param autoreplaytitle
+@text Auto Replay Title Music
+@type boolean
+@default false
+@desc If on, will cause the title screen's music to reload when the subfolder changes.
 
 @command ChangeSubById
 @text Change Subfolder (ID)
@@ -144,6 +150,9 @@ LyraVultur.AltAudio.affectstaticse = Boolean(PluginManager.parameters('Lyra_AltA
 
 LyraVultur.AltAudio.autoreplaymap = false;
 LyraVultur.AltAudio.autoreplaymap = Boolean(PluginManager.parameters('Lyra_AltAudio')['autoreplaymap']);
+LyraVultur.AltAudio.autoreplaytitle = false;
+LyraVultur.AltAudio.autoreplaytitle = Boolean(PluginManager.parameters('Lyra_AltAudio')['autoreplaytitle']);
+LyraVultur.AltAudio.bgmTitle = {};
 
 LyraVultur.AltAudio.alts = [];
 LyraVultur.AltAudio.alts = JSON.parse(PluginManager.parameters('Lyra_AltAudio')['alts']);
@@ -170,11 +179,16 @@ LyraVultur.AltAudio.Initialise = function() {
 LyraVultur.AltAudio.Initialise();
 
 //==========Helper Functions and Command binds
+LyraVultur.AltAudio.Scene_Title_start = Scene_Title.prototype.start;
+Scene_Map.prototype.start = function() {
+	LyraVultur.AltAudio.bgmTitle = $dataSystem.titleBgm;
+    LyraVultur.AltAudio.Scene_Title_start.call(this);
+};
+
 LyraVultur.AltAudio.Scene_Map_start = Scene_Map.prototype.start;
 Scene_Map.prototype.start = function() {
 	if ($dataMap) {
 		$dataMap.autoplayBgmName = $dataMap.bgm.name;
-		console.log($dataMap);
 	}
     LyraVultur.AltAudio.Scene_Map_start.call(this);
 };
@@ -193,10 +207,19 @@ LyraVultur.AltAudio.SetAlt = function(id) {
 
 	SoundManager.preloadImportantSounds();
 
-	if (LyraVultur.AltAudio.autoreplaymap && $dataMap.autoplayBgm && LyraVultur.AltAudio.affectbgm) {
-		//$gameMap.autoplay();
-		$dataMap.bgm.name = $dataMap.autoplayBgmName;
-		AudioManager.playBgm($dataMap.bgm);
+	if (LyraVultur.AltAudio.affectbgm) {
+		if (LyraVultur.AltAudio.autoreplaymap && SceneManager?._scene instanceof Scene_Map) {
+			//$gameMap.autoplay();
+			if ($dataMap?.autoplayBgm) {
+				$dataMap.bgm.name = $dataMap.autoplayBgmName;
+				AudioManager.playBgm($dataMap.bgm);
+			}
+		}
+		if (LyraVultur.AltAudio.autoreplaytitle && SceneManager?._scene instanceof Scene_Title) {
+			//console.log("title mus: " + $dataSystem.titleBgm.name);
+			//$dataSystem.titleBgm.name = LyraVultur.AltAudio.bgmTitle.name;
+			AudioManager.playBgm($dataSystem.titleBgm);
+		}
 	}
 
 	if (LyraVultur.AltAudio.printdebug) {
@@ -287,8 +310,8 @@ PluginManager.registerCommand('Lyra_AltAudio', 'ChangeSubByName', args => {
 PluginManager.registerCommand('Lyra_AltAudio', 'ChangeAffected', args => {
 	const arg0 = String(args.type);
 	const arg1 = JSON.parse(args.state);
-	console.log(args.state);
-	console.log(arg1);
+	//console.log(args.state);
+	//console.log(arg1);
 
 	switch(arg0) {
 		case "BGM":
@@ -312,7 +335,7 @@ PluginManager.registerCommand('Lyra_AltAudio', 'ChangeAffected', args => {
 //todo: add the alternative sounds as n + 30 in the array, so we can keep the original loadSystemSound function unscathed
 SoundManager.loadSystemSound = function(n) {
     if ($dataSystem) {
-		let altdata = $dataSystem.sounds[n];
+		let altdata = {...$dataSystem.sounds[n]};
 		const origname = altdata.name;
 		altdata.name = LyraVultur.AltAudio.GetPath() + origname;
 		altdata.altered = true;
@@ -421,13 +444,14 @@ LyraVultur.AltAudio.CheckExists = function(folder, name) {
 //Actual play overrides
 LyraVultur.AltAudio.AudioManager_playBgm = AudioManager.playBgm;
 AudioManager.playBgm = function(bgm, pos) {
+	let altdata = {...bgm};
 	if (LyraVultur.AltAudio.curpath != null && bgm?.name != "" && LyraVultur.AltAudio.affectbgm) {
 		const origname = bgm.name;
-		bgm.name = LyraVultur.AltAudio.GetPath() + origname;
-		bgm.altered = true;
+		altdata.name = LyraVultur.AltAudio.GetPath() + origname;
+		altdata.altered = true;
 
-		if (!LyraVultur.AltAudio.CheckExists("bgm/", bgm.name)) {
-			bgm.name = origname;
+		if (!LyraVultur.AltAudio.CheckExists("bgm/", altdata.name)) {
+			altdata.name = origname;
 		}
 
 		if (LyraVultur.AltAudio.lastid != LyraVultur.AltAudio.curid) {
@@ -436,67 +460,71 @@ AudioManager.playBgm = function(bgm, pos) {
 		}
 	}
 
-	LyraVultur.AltAudio.AudioManager_playBgm.call(this, bgm, pos);
+	LyraVultur.AltAudio.AudioManager_playBgm.call(this, altdata, pos);
 };
 
 LyraVultur.AltAudio.AudioManager_playMe = AudioManager.playMe;
 AudioManager.playMe = function(me) {
+	let altdata = {...me};
 	if (LyraVultur.AltAudio.curpath != null && me?.name != "" && LyraVultur.AltAudio.affectme) {
 		const origname = me.name;
-		me.name = LyraVultur.AltAudio.GetPath() + origname;
-		me.altered = true;
+		altdata.name = LyraVultur.AltAudio.GetPath() + origname;
+		altdata.altered = true;
 
-		if (!LyraVultur.AltAudio.CheckExists("me/", me.name)) {
-			me.name = origname;
+		if (!LyraVultur.AltAudio.CheckExists("me/", altdata.name)) {
+			altdata.name = origname;
 		}
 	}
 
-	LyraVultur.AltAudio.AudioManager_playMe.call(this, me);
+	LyraVultur.AltAudio.AudioManager_playMe.call(this, altdata);
 };
 
 LyraVultur.AltAudio.AudioManager_playBgs = AudioManager.playBgs;
 AudioManager.playBgs = function(bgs, pos) {
+	let altdata = {...bgs};
 	if (LyraVultur.AltAudio.curpath != null && bgs?.name != "" && LyraVultur.AltAudio.affectbgs) {
 		const origname = bgs.name;
-		bgs.name = LyraVultur.AltAudio.GetPath() + origname;
-		bgs.altered = true;
+		altdata.name = LyraVultur.AltAudio.GetPath() + origname;
+		altdata.altered = true;
 
-		if (!LyraVultur.AltAudio.CheckExists("bgs/", bgs.name)) {
-			bgs.name = origname;
+		if (!LyraVultur.AltAudio.CheckExists("bgs/", altdata.name)) {
+			altdatabgs.name = origname;
 		}
 	}
 
-	LyraVultur.AltAudio.AudioManager_playBgs.call(this, bgs, pos);
+	LyraVultur.AltAudio.AudioManager_playBgs.call(this, altdata, pos);
 };
 
 LyraVultur.AltAudio.AudioManager_playSe = AudioManager.playSe;
 AudioManager.playSe = function(se) {
+	let altdata = {...se};
 	if (LyraVultur.AltAudio.curpath != null && se?.name != "" && LyraVultur.AltAudio.affectse) {
 		const origname = se.name;
-		se.name = LyraVultur.AltAudio.GetPath() + origname;
-		se.altered = true;
+		altdata.name = LyraVultur.AltAudio.GetPath() + origname;
+		altdata.altered = true;
 
-		if (!LyraVultur.AltAudio.CheckExists("se/", se.name)) {
-			se.name = origname;
+		if (!LyraVultur.AltAudio.CheckExists("se/", altdata.name)) {
+			altdata.name = origname;
 		}
 	}
 
-	LyraVultur.AltAudio.AudioManager_playSe.call(this, se);
+	LyraVultur.AltAudio.AudioManager_playSe.call(this, altdata);
 };
 
 LyraVultur.AltAudio.AudioManager_playStaticSe = AudioManager.playStaticSe;
 AudioManager.playStaticSe = function(se) {
+	let altdata = {...se};
 	if (LyraVultur.AltAudio.curpath != null && se?.name != "" && LyraVultur.AltAudio.affectstaticse) {
 		const origname = se.name;
-		if (!se.name.startsWith(LyraVultur.AltAudio.GetPath())) {
-			se.name = LyraVultur.AltAudio.GetPath() + origname;
+		if (!altdata.name.startsWith(LyraVultur.AltAudio.GetPath())) {
+			altdata.name = LyraVultur.AltAudio.GetPath() + origname;
 		}
-		se.altered = true;
+		altdata.altered = true;
 
-		if (!LyraVultur.AltAudio.CheckExists("se/", se.name)) {
-			se.name = origname;
+		if (!LyraVultur.AltAudio.CheckExists("se/", altdata.name)) {
+			altdata.name = origname;
 		}
 	}
 
-	LyraVultur.AltAudio.AudioManager_playStaticSe.call(this, se);
+	LyraVultur.AltAudio.AudioManager_playStaticSe.call(this, altdata);
 };
