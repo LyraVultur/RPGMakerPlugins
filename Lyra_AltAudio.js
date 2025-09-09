@@ -4,7 +4,7 @@
 
 /*:
 @target MZ
-@plugindesc [v1.1] Change the entire soundtrack to alternate ones easily.
+@plugindesc [v1.2] Change the entire soundtrack to alternate ones easily.
 @author Lyra Vultur
 @url http://www.koutacles.com.au/
  
@@ -152,7 +152,6 @@ LyraVultur.AltAudio.autoreplaymap = false;
 LyraVultur.AltAudio.autoreplaymap = Boolean(PluginManager.parameters('Lyra_AltAudio')['autoreplaymap']);
 LyraVultur.AltAudio.autoreplaytitle = false;
 LyraVultur.AltAudio.autoreplaytitle = Boolean(PluginManager.parameters('Lyra_AltAudio')['autoreplaytitle']);
-LyraVultur.AltAudio.bgmTitle = {};
 
 LyraVultur.AltAudio.alts = [];
 LyraVultur.AltAudio.alts = JSON.parse(PluginManager.parameters('Lyra_AltAudio')['alts']);
@@ -215,7 +214,15 @@ LyraVultur.AltAudio.SetAlt = function(id) {
 				AudioManager.playBgm($dataMap.bgm);
 			}
 		}
-		if (LyraVultur.AltAudio.autoreplaytitle && SceneManager?._scene instanceof Scene_Title) {
+
+		if (LyraVultur.AltAudio.autoreplaymap && SceneManager?._scene instanceof Scene_Options && !SceneManager.isPreviousScene(Scene_Title)) {
+			if ($dataMap?.autoplayBgm) {
+				$dataMap.bgm.name = $dataMap.autoplayBgmName;
+				AudioManager.playBgm($dataMap.bgm);
+			}
+		}
+
+		if (LyraVultur.AltAudio.autoreplaytitle && (SceneManager?._scene instanceof Scene_Title || SceneManager.isPreviousScene(Scene_Title))) {
 			//console.log("title mus: " + $dataSystem.titleBgm.name);
 			//$dataSystem.titleBgm.name = LyraVultur.AltAudio.bgmTitle.name;
 			AudioManager.playBgm($dataSystem.titleBgm);
