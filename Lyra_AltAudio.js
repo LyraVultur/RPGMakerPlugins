@@ -4,7 +4,7 @@
 
 /*:
 @target MZ
-@plugindesc [v1.2] Change the entire soundtrack to alternate ones easily.
+@plugindesc [v1.21] Change the entire soundtrack to alternate ones easily.
 @author Lyra Vultur
 @url http://www.koutacles.com.au/
  
@@ -65,6 +65,12 @@ MIT
 @default false
 @desc If on, will cause the title screen's music to reload when the subfolder changes.
 
+@param globalsave
+@text Save Soundtrack (Global)
+@type boolean
+@default false
+@desc If on, will cause the choice of soundtrack to be remembered regardless of save file.
+
 @command ChangeSubById
 @text Change Subfolder (ID)
 @desc Change which folder id music is getting chosen from, as per the plugin settings. 0 for the default.
@@ -92,6 +98,14 @@ MIT
     @arg name
     @text Name
     @type text
+
+@command SaveGlobalData
+@text Save Global Data
+@desc Manually saves the global data (if enabled). Automatically happens on saving the game.
+
+@command EraseGlobalData
+@text Erase Global Data
+@desc Erases the global save data.
 
 @command ChangeAffected
 @text Change Affected
@@ -153,6 +167,10 @@ LyraVultur.AltAudio.autoreplaymap = Boolean(PluginManager.parameters('Lyra_AltAu
 LyraVultur.AltAudio.autoreplaytitle = false;
 LyraVultur.AltAudio.autoreplaytitle = Boolean(PluginManager.parameters('Lyra_AltAudio')['autoreplaytitle']);
 
+LyraVultur.AltAudio.globalsave = false;
+LyraVultur.AltAudio.globalsave = Boolean(PluginManager.parameters('Lyra_AltAudio')['globalsave']);
+//LyraVultur.AltAudio.globalData = {};
+
 LyraVultur.AltAudio.alts = [];
 LyraVultur.AltAudio.alts = JSON.parse(PluginManager.parameters('Lyra_AltAudio')['alts']);
 
@@ -177,12 +195,79 @@ LyraVultur.AltAudio.Initialise = function() {
 };
 LyraVultur.AltAudio.Initialise();
 
-//==========Helper Functions and Command binds
-/*LyraVultur.AltAudio.Scene_Title_start = Scene_Title.prototype.start;
-Scene_Title.prototype.start = function() {
-	LyraVultur.AltAudio.bgmTitle = $dataSystem.titleBgm;
-    LyraVultur.AltAudio.Scene_Title_start.call(this);
+//==========Save/Load
+LyraVultur.AltAudio.saveGlobal = function() {
+	const savedata = {curid: LyraVultur.AltAudio.curid};
+	StorageManager.saveObject("lyra_altaudio", savedata);
+};
+
+LyraVultur.AltAudio.loadGlobal = function() {
+	if (StorageManager.exists("lyra_altaudio")) {
+		let savedata = StorageManager.loadObject("lyra_altaudio");
+		savedata.then(function(result) {
+			LyraVultur.AltAudio.SetAlt(result.curid);
+			return result;
+		});
+		//LyraVultur.AltAudio.globalData = savedata;
+		//LyraVultur.AltAudio.curid = savedata.id;
+	}
+	else if (LyraVultur.AltAudio.printdebug) {
+		console.log("[AltAudio] no global save data found");
+	}
+};
+
+/*LyraVultur.AltAudio.GameSystem_onAfterLoad = Game_System.prototype.onAfterLoad;
+Game_System.prototype.onAfterLoad = function() {
+	//LyraVultur.AltAudio.curid = 0;
+	LyraVultur.AltAudio.GameSystem_onAfterLoad.call(this);
 };*/
+
+LyraVultur.AltAudio.DataManager_makeSaveContents = DataManager.makeSaveContents;
+DataManager.makeSaveContents = function() {
+	let contents = LyraVultur.AltAudio.DataManager_makeSaveContents.call(this);
+	contents.altaudio = {};
+	contents.altaudio.curid = LyraVultur.AltAudio.curid;
+	return contents;
+};
+
+LyraVultur.AltAudio.DataManager_extractSaveContents = DataManager.extractSaveContents;
+DataManager.extractSaveContents = function(contents) {
+	LyraVultur.AltAudio.DataManager_extractSaveContents.call(this, contents);
+	if (contents?.altaudio?.curid != undefined) {
+		if (LyraVultur.AltAudio.printdebug) {
+			console.log("[AltAudio] loading local save data..");
+		}
+		LyraVultur.AltAudio.SetAlt(contents.altaudio.curid);
+	}
+	else if (LyraVultur.AltAudio.printdebug) {
+		console.log("[AltAudio] no local save data found");
+	}
+};
+
+LyraVultur.AltAudio.DataManager_saveGlobalInfo = DataManager.saveGlobalInfo;
+DataManager.saveGlobalInfo = function() {
+	LyraVultur.AltAudio.DataManager_saveGlobalInfo.call(this);
+	if (LyraVultur.AltAudio.globalsave) {
+		LyraVultur.AltAudio.saveGlobal();
+	}
+};
+
+LyraVultur.AltAudio.DataManager_loadGlobalInfo = DataManager.loadGlobalInfo;
+DataManager.loadGlobalInfo = function() {
+	LyraVultur.AltAudio.DataManager_loadGlobalInfo.call(this);
+	if (LyraVultur.AltAudio.globalsave) {
+		LyraVultur.AltAudio.loadGlobal();
+	}
+};
+
+//==========Helper Functions and Command binds
+LyraVultur.AltAudio.Scene_Title_start = Scene_Title.prototype.start;
+Scene_Title.prototype.start = function() {
+	if (!LyraVultur.AltAudio.globalsave) {
+		LyraVultur.AltAudio.SetAlt(0);
+	}
+    LyraVultur.AltAudio.Scene_Title_start.call(this);
+};
 
 LyraVultur.AltAudio.Scene_Map_start = Scene_Map.prototype.start;
 Scene_Map.prototype.start = function() {
@@ -336,6 +421,14 @@ PluginManager.registerCommand('Lyra_AltAudio', 'ChangeAffected', args => {
 		default:
 			throw new Error("[AltAudio] ChangeAffected didn't understand the type " + arg0);
 	}
+});
+
+PluginManager.registerCommand('Lyra_AltAudio', 'SaveGlobalData', args => {
+	LyraVultur.AltAudio.saveGlobal();
+});
+
+PluginManager.registerCommand('Lyra_AltAudio', 'EraseGlobalData', args => {
+	StorageManager.removeLocalFile("lyra_altaudio");
 });
 
 //==========Main
