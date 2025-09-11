@@ -4,7 +4,7 @@
 
 /*:
 @target MZ
-@plugindesc [v1.21] Change the entire soundtrack to alternate ones easily.
+@plugindesc [v1.3] Change the entire soundtrack to alternate ones easily.
 @author Lyra Vultur
 @url http://www.koutacles.com.au/
  
@@ -70,6 +70,25 @@ MIT
 @type boolean
 @default false
 @desc If on, will cause the choice of soundtrack to be remembered regardless of save file.
+
+@param useoptionsmenu
+@text Options Menu Setting
+@type boolean
+@default true
+@desc If on, will let the user pick the soundtrack in the options menu.
+
+@param useoptionstext
+@text Options Menu Text
+@type text
+@default Soundtrack
+@desc If Options Menu Setting is on, sets what the option is called.
+
+@param visuoptionscat
+@text VisuMZ Options Category
+@type number
+@min 0
+@default 0
+@desc If VisuMZ Options Core is enabled, which category id should we put this option in?
 
 @command ChangeSubById
 @text Change Subfolder (ID)
@@ -152,24 +171,32 @@ LyraVultur.AltAudio.printdebug = {};
 LyraVultur.AltAudio.printdebug = JSON.parse(PluginManager.parameters('Lyra_AltAudio')['showdebug']) && Utils.isOptionValid('test');
 
 LyraVultur.AltAudio.affectbgm = false;
-LyraVultur.AltAudio.affectbgm = Boolean(PluginManager.parameters('Lyra_AltAudio')['affectbgm']);
+LyraVultur.AltAudio.affectbgm = JSON.parse(PluginManager.parameters('Lyra_AltAudio')['affectbgm']);
 LyraVultur.AltAudio.affectbgs = false;
-LyraVultur.AltAudio.affectbgs = Boolean(PluginManager.parameters('Lyra_AltAudio')['affectbgs']);
+LyraVultur.AltAudio.affectbgs = JSON.parse(PluginManager.parameters('Lyra_AltAudio')['affectbgs']);
 LyraVultur.AltAudio.affectme = false;
-LyraVultur.AltAudio.affectme = Boolean(PluginManager.parameters('Lyra_AltAudio')['affectme']);
+LyraVultur.AltAudio.affectme = JSON.parse(PluginManager.parameters('Lyra_AltAudio')['affectme']);
 LyraVultur.AltAudio.affectse = false;
-LyraVultur.AltAudio.affectse = Boolean(PluginManager.parameters('Lyra_AltAudio')['affectse']);
+LyraVultur.AltAudio.affectse = JSON.parse(PluginManager.parameters('Lyra_AltAudio')['affectse']);
 LyraVultur.AltAudio.affectstaticse = false;
-LyraVultur.AltAudio.affectstaticse = Boolean(PluginManager.parameters('Lyra_AltAudio')['affectstaticse']);
+LyraVultur.AltAudio.affectstaticse = JSON.parse(PluginManager.parameters('Lyra_AltAudio')['affectstaticse']);
 
 LyraVultur.AltAudio.autoreplaymap = false;
-LyraVultur.AltAudio.autoreplaymap = Boolean(PluginManager.parameters('Lyra_AltAudio')['autoreplaymap']);
+LyraVultur.AltAudio.autoreplaymap = JSON.parse(PluginManager.parameters('Lyra_AltAudio')['autoreplaymap']);
 LyraVultur.AltAudio.autoreplaytitle = false;
-LyraVultur.AltAudio.autoreplaytitle = Boolean(PluginManager.parameters('Lyra_AltAudio')['autoreplaytitle']);
+LyraVultur.AltAudio.autoreplaytitle = JSON.parse(PluginManager.parameters('Lyra_AltAudio')['autoreplaytitle']);
+
+LyraVultur.AltAudio.useoptionsmenu = false;
+LyraVultur.AltAudio.useoptionsmenu = JSON.parse(PluginManager.parameters('Lyra_AltAudio')['useoptionsmenu']);
+LyraVultur.AltAudio.useoptionstext = "";
+LyraVultur.AltAudio.useoptionstext = String(PluginManager.parameters('Lyra_AltAudio')['useoptionstext']);
+LyraVultur.AltAudio.visuoptionscat = 0;
+LyraVultur.AltAudio.visuoptionscat = JSON.parse(PluginManager.parameters('Lyra_AltAudio')['visuoptionscat']);
 
 LyraVultur.AltAudio.globalsave = false;
-LyraVultur.AltAudio.globalsave = Boolean(PluginManager.parameters('Lyra_AltAudio')['globalsave']);
-//LyraVultur.AltAudio.globalData = {};
+LyraVultur.AltAudio.globalsave = JSON.parse(PluginManager.parameters('Lyra_AltAudio')['globalsave']);
+
+LyraVultur.AltAudio.ignisoverride = false;
 
 LyraVultur.AltAudio.alts = [];
 LyraVultur.AltAudio.alts = JSON.parse(PluginManager.parameters('Lyra_AltAudio')['alts']);
@@ -254,13 +281,20 @@ DataManager.saveGlobalInfo = function() {
 
 LyraVultur.AltAudio.DataManager_loadGlobalInfo = DataManager.loadGlobalInfo;
 DataManager.loadGlobalInfo = function() {
+	if (typeof Ignis !== 'undefined') {
+		if (!!Ignis?.SoundSynchronizer == true) {
+			console.warn("[AltAudio] This plugin is currently incompatible with Ignis Audio Synchronizer!");
+			LyraVultur.AltAudio.ignisoverride = true;
+		}
+	}
+
 	LyraVultur.AltAudio.DataManager_loadGlobalInfo.call(this);
 	if (LyraVultur.AltAudio.globalsave) {
 		LyraVultur.AltAudio.loadGlobal();
 	}
 };
 
-//==========Helper Functions and Command binds
+//==========Function Overrides
 LyraVultur.AltAudio.Scene_Title_start = Scene_Title.prototype.start;
 Scene_Title.prototype.start = function() {
 	if (!LyraVultur.AltAudio.globalsave) {
@@ -277,10 +311,16 @@ Scene_Map.prototype.start = function() {
     LyraVultur.AltAudio.Scene_Map_start.call(this);
 };
 
+/*AudioManager.isCurrentBgm = function(bgm) {
+    return (
+        this._currentBgm &&
+        this._bgmBuffer &&
+        this._currentBgm.name === bgm.name
+    );
+};*/
+
 LyraVultur.AltAudio.SetAlt = function(id) {
-	//if (LyraVultur.AltAudio.lastid != LyraVultur.AltAudio.curid) {
-		LyraVultur.AltAudio.lastid = LyraVultur.AltAudio.curid;
-	//}
+	LyraVultur.AltAudio.lastid = LyraVultur.AltAudio.curid;
 	LyraVultur.AltAudio.curid = id;
 	if (id == 0) {
 		LyraVultur.AltAudio.curpath = null;
@@ -307,7 +347,12 @@ LyraVultur.AltAudio.SetAlt = function(id) {
 			}
 		}
 
-		if (LyraVultur.AltAudio.autoreplaytitle && (SceneManager?._scene instanceof Scene_Title || SceneManager.isPreviousScene(Scene_Title))) {
+		if (LyraVultur.AltAudio.autoreplaytitle && LyraVultur.AltAudio.ignisoverride) {
+			console.warn("[AltAudio] Auto Replay Title will NOT function with Ignis Audio Synchronizer enabled!");
+			//return;
+		}
+
+		if (LyraVultur.AltAudio.autoreplaytitle && !LyraVultur.AltAudio.ignisoverride && (SceneManager?._scene instanceof Scene_Title || SceneManager.isPreviousScene(Scene_Title))) {
 			//console.log("title mus: " + $dataSystem.titleBgm.name);
 			//$dataSystem.titleBgm.name = LyraVultur.AltAudio.bgmTitle.name;
 			AudioManager.playBgm($dataSystem.titleBgm);
@@ -316,6 +361,34 @@ LyraVultur.AltAudio.SetAlt = function(id) {
 
 	if (LyraVultur.AltAudio.printdebug) {
 		console.log("[AltAudio] current path now: \"" + LyraVultur.AltAudio.curpath + "\"");
+	}
+};
+
+LyraVultur.AltAudio.SetAltNext = function() {
+	if (LyraVultur.AltAudio.alts.length == 0) {
+		return;
+	}
+
+	LyraVultur.AltAudio.curid++;
+	if (LyraVultur.AltAudio.curid > LyraVultur.AltAudio.alts.length) {
+		LyraVultur.AltAudio.SetAlt(0);
+	}
+	else {
+		LyraVultur.AltAudio.SetAlt(LyraVultur.AltAudio.curid);
+	}
+};
+
+LyraVultur.AltAudio.SetAltPrev = function() {
+	if (LyraVultur.AltAudio.alts.length == 0) {
+		return;
+	}
+
+	LyraVultur.AltAudio.curid--;
+	if (LyraVultur.AltAudio.curid < 0) {
+		LyraVultur.AltAudio.SetAlt(LyraVultur.AltAudio.alts.length);
+	}
+	else {
+		LyraVultur.AltAudio.SetAlt(LyraVultur.AltAudio.curid);
 	}
 };
 
@@ -331,6 +404,102 @@ LyraVultur.AltAudio.GetPath = function(trail = true) {
 	return LyraVultur.AltAudio.curpath;
 };
 
+LyraVultur.AltAudio.Window_Options_makeCommandList = Window_Options.prototype.makeCommandList;
+Window_Options.prototype.makeCommandList = function() {
+	LyraVultur.AltAudio.Window_Options_makeCommandList.call(this);
+	
+	if (LyraVultur.AltAudio.useoptionsmenu) {
+		if (!LyraVultur.AltAudio.globalsave && SceneManager.isPreviousScene(Scene_Title)) {
+			//since it won't be saved, don't show if we aren't in game and aren't saving global data
+			return;
+		}
+
+		if (typeof VisuMZ !== 'undefined' && VisuMZ.OptionsCore) {
+			//adjustments for VisuMZ OptionsCore categories
+			const icon = VisuMZ.OptionsCore.Settings.Categories[LyraVultur.AltAudio.visuoptionscat].Icon;
+			const name = VisuMZ.OptionsCore.Settings.Categories[LyraVultur.AltAudio.visuoptionscat].Name;
+			if (SceneManager._scene._optionsWindow && SceneManager._scene._optionsWindow._name == "\\I[" + icon + "]" + name) {
+				this.addCommand(LyraVultur.AltAudio.useoptionstext, "altAudioOST");
+			}
+		}
+		else {
+    		this.addCommand(LyraVultur.AltAudio.useoptionstext, "altAudioOST");
+		}
+	}
+};
+
+LyraVultur.AltAudio.GetNameFromId = function(i) {
+	//todo: custom text over Default? interpret underscores as spaces? or add a seperate user list for prettier text?
+	if (i < 0) {
+		return "Default";
+	}
+	const text = LyraVultur.AltAudio.alts[i];
+	if (text == undefined) {
+		return "Default";
+	}
+
+	return text;
+};
+
+Window_Options.prototype.altaudioStatusText = function(value) {
+    return LyraVultur.AltAudio.GetNameFromId(value);
+};
+
+LyraVultur.AltAudio.Window_Options_statusText = Window_Options.prototype.statusText;
+Window_Options.prototype.statusText = function(index) {
+	const symbol = this.commandSymbol(index);
+    const value = LyraVultur.AltAudio.curid;
+    if (symbol.includes("altAudioOST")) {
+        return this.altaudioStatusText(value);
+    }
+
+	let result = LyraVultur.AltAudio.Window_Options_statusText.call(this, index);
+	return result;
+};
+
+LyraVultur.AltAudio.Window_Options_cursorLeft = Window_Options.prototype.cursorLeft;
+Window_Options.prototype.cursorLeft = function() {
+    const index = this.index();
+    const symbol = this.commandSymbol(index);
+    if (symbol.includes("altAudioOST")) {
+        this.changeAltAudio(true, false);
+		this.redrawItem(this.findSymbol(symbol));
+        this.playCursorSound();
+		if (LyraVultur.AltAudio.globalsave) {
+			LyraVultur.AltAudio.saveGlobal();
+		}
+    } else {
+        LyraVultur.AltAudio.Window_Options_cursorLeft.call(this);
+    }
+};
+
+LyraVultur.AltAudio.Window_Options_cursorRight = Window_Options.prototype.cursorRight;
+Window_Options.prototype.cursorRight = function() {
+    const index = this.index();
+    const symbol = this.commandSymbol(index);
+    if (symbol.includes("altAudioOST")) {
+        this.changeAltAudio(false, true);
+		this.redrawItem(this.findSymbol(symbol));
+        this.playCursorSound();
+		if (LyraVultur.AltAudio.globalsave) {
+			LyraVultur.AltAudio.saveGlobal();
+		}
+    } else {
+        LyraVultur.AltAudio.Window_Options_cursorRight.call(this);
+    }
+};
+
+Window_Options.prototype.changeAltAudio = function(prev, next) {
+	if (next) {
+		LyraVultur.AltAudio.SetAltNext();
+	}
+	else if (prev) {
+		LyraVultur.AltAudio.SetAltPrev();
+	}
+    //this.changeValue(symbol, value.clamp(0, 100));
+};
+
+//Command Binds
 PluginManager.registerCommand('Lyra_AltAudio', 'ChangeSubById', args => {
 	const arg0 = JSON.parse(args.id);
 
@@ -346,31 +515,11 @@ PluginManager.registerCommand('Lyra_AltAudio', 'ChangeSubById', args => {
 });
 
 PluginManager.registerCommand('Lyra_AltAudio', 'ChangeSubByIdNext', args => {
-	if (LyraVultur.AltAudio.alts.length == 0) {
-		return;
-	}
-
-	LyraVultur.AltAudio.curid++;
-	if (LyraVultur.AltAudio.curid > LyraVultur.AltAudio.alts.length) {
-		LyraVultur.AltAudio.SetAlt(0);
-	}
-	else {
-		LyraVultur.AltAudio.SetAlt(LyraVultur.AltAudio.curid);
-	}
+	LyraVultur.AltAudio.SetAltNext();
 });
 
 PluginManager.registerCommand('Lyra_AltAudio', 'ChangeSubByIdPrev', args => {
-	if (LyraVultur.AltAudio.alts.length == 0) {
-		return;
-	}
-
-	LyraVultur.AltAudio.curid--;
-	if (LyraVultur.AltAudio.curid < 0) {
-		LyraVultur.AltAudio.SetAlt(LyraVultur.AltAudio.alts.length);
-	}
-	else {
-		LyraVultur.AltAudio.SetAlt(LyraVultur.AltAudio.curid);
-	}
+	LyraVultur.AltAudio.SetAltPrev();
 });
 
 PluginManager.registerCommand('Lyra_AltAudio', 'ChangeSubByIdRandom', args => {
@@ -554,10 +703,10 @@ AudioManager.playBgm = function(bgm, pos) {
 			altdata.name = origname;
 		}
 
-		if (LyraVultur.AltAudio.lastid != LyraVultur.AltAudio.curid) {
+		//if (LyraVultur.AltAudio.lastid != LyraVultur.AltAudio.curid) {
 			//console.log("last (" + LyraVultur.AltAudio.lastid + ") wasnt cur (" + LyraVultur.AltAudio.curid + ")");
 			//LyraVultur.AltAudio.lastid = LyraVultur.AltAudio.curid;
-		}
+		//}
 	}
 
 	LyraVultur.AltAudio.AudioManager_playBgm.call(this, altdata, pos);
