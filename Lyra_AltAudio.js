@@ -23,72 +23,90 @@ MIT
 @type text[]
 @desc Add any folders to be used by the plugin here. They can be selected later by ID or by name.
 
-@param affectbgm
-@text Affect BGMs?
-@type boolean
-@default true
-@desc If on, will cause any BGMs to be affected by the alternate subfolder settings.
-
-@param affectme
-@text Affect MEs?
-@type boolean
-@default false
-@desc If on, will cause any MEs to be affected by the alternate subfolder settings.
-
-@param affectbgs
-@text Affect BGSs?
-@type boolean
-@default false
-@desc If on, will cause any BGSs to be affected by the alternate subfolder settings.
-
-@param affectse
-@text Affect SE?
-@type boolean
-@default false
-@desc If on, will cause any SEs to be affected by the alternate subfolder settings.
-
-@param affectstaticse
-@text Affect Static SE?
-@type boolean
-@default false
-@desc If on, will cause any static SEs (menu cursor, menu cancel, etc) to be affected by the alternate subfolder settings.
-
-@param autoreplaymap
-@text Auto Replay Map Music
-@type boolean
-@default false
-@desc If on, will cause the map's music to reload when the subfolder changes.
-
-@param autoreplaytitle
-@text Auto Replay Title Music
-@type boolean
-@default false
-@desc If on, will cause the title screen's music to reload when the subfolder changes.
-
 @param globalsave
 @text Save Soundtrack (Global)
 @type boolean
 @default false
 @desc If on, will cause the choice of soundtrack to be remembered regardless of save file.
 
+@param Affects
+
+@param affectbgm
+@text Affect BGMs?
+@type boolean
+@default true
+@desc If on, will cause any BGMs to be affected by the alternate subfolder settings.
+@parent Affects
+
+@param affectme
+@text Affect MEs?
+@type boolean
+@default false
+@desc If on, will cause any MEs to be affected by the alternate subfolder settings.
+@parent Affects
+
+@param affectbgs
+@text Affect BGSs?
+@type boolean
+@default false
+@desc If on, will cause any BGSs to be affected by the alternate subfolder settings.
+@parent Affects
+
+@param affectse
+@text Affect SE?
+@type boolean
+@default false
+@desc If on, will cause any SEs to be affected by the alternate subfolder settings.
+@parent Affects
+
+@param affectstaticse
+@text Affect Static SE?
+@type boolean
+@default false
+@desc If on, will cause any static SEs (menu cursor, menu cancel, etc) to be affected by the alternate subfolder settings.
+@parent Affects
+
+@param AutoReplay
+@text Auto Replay
+
+@param autoreplaymap
+@text Auto Replay Map Audio
+@type boolean
+@default false
+@desc If on, will cause the map's music/bgs to reload when the subfolder changes.
+@parent AutoReplay
+
+@param autoreplaytitle
+@text Auto Replay Title Music
+@type boolean
+@default false
+@desc If on, will cause the title screen's music to reload when the subfolder changes.
+@parent AutoReplay
+
+@param OptionsMenu
+@text Options Menu
+
 @param useoptionsmenu
 @text Options Menu Setting
 @type boolean
-@default true
+@default false
 @desc If on, will let the user pick the soundtrack in the options menu.
+@parent OptionsMenu
 
 @param useoptionstext
 @text Options Menu Text
 @type text
 @default Soundtrack
 @desc If Options Menu Setting is on, sets what the option is called.
+@parent OptionsMenu
 
 @param visuoptionscat
 @text VisuMZ Options Category
 @type number
 @min 0
-@default 0
+@default 1
 @desc If VisuMZ Options Core is enabled, which category id should we put this option in?
+@parent OptionsMenu
 
 @command ChangeSubById
 @text Change Subfolder (ID)
@@ -331,31 +349,50 @@ LyraVultur.AltAudio.SetAlt = function(id) {
 
 	SoundManager.preloadImportantSounds();
 
-	if (LyraVultur.AltAudio.affectbgm) {
-		if (LyraVultur.AltAudio.autoreplaymap && SceneManager?._scene instanceof Scene_Map) {
-			//$gameMap.autoplay();
-			if ($dataMap?.autoplayBgm) {
-				$dataMap.bgm.name = $dataMap.autoplayBgmName;
-				AudioManager.playBgm($dataMap.bgm);
+	if (LyraVultur.AltAudio.ignisoverride && Ignis.SoundSynchronizer.NeedToSynchronizeBGM == true) {
+		console.warn("[AltAudio] Auto replay functions are disabled while Ignis Audio Synchronization is enabled!");
+	}
+	else {
+		if (LyraVultur.AltAudio.affectbgs) {
+			if (LyraVultur.AltAudio.autoreplaymap && SceneManager?._scene instanceof Scene_Map) {
+				if ($dataMap.autoplayBgs) {
+					AudioManager.playBgs($dataMap.bgs);
+				}
+			}
+
+			if (LyraVultur.AltAudio.autoreplaymap && SceneManager?._scene instanceof Scene_Options && !SceneManager.isPreviousScene(Scene_Title)) {
+				if ($dataMap.autoplayBgs) {
+					AudioManager.playBgs($dataMap.bgs);
+				}
 			}
 		}
 
-		if (LyraVultur.AltAudio.autoreplaymap && SceneManager?._scene instanceof Scene_Options && !SceneManager.isPreviousScene(Scene_Title)) {
-			if ($dataMap?.autoplayBgm) {
-				$dataMap.bgm.name = $dataMap.autoplayBgmName;
-				AudioManager.playBgm($dataMap.bgm);
+		if (LyraVultur.AltAudio.affectbgm) {
+			if (LyraVultur.AltAudio.autoreplaymap && SceneManager?._scene instanceof Scene_Map) {
+				//$gameMap.autoplay();
+				if ($dataMap?.autoplayBgm) {
+					$dataMap.bgm.name = $dataMap.autoplayBgmName;
+					AudioManager.playBgm($dataMap.bgm);
+				}
 			}
-		}
 
-		if (LyraVultur.AltAudio.autoreplaytitle && LyraVultur.AltAudio.ignisoverride) {
-			console.warn("[AltAudio] Auto Replay Title will NOT function with Ignis Audio Synchronizer enabled!");
-			//return;
-		}
+			if (LyraVultur.AltAudio.autoreplaymap && SceneManager?._scene instanceof Scene_Options && !SceneManager.isPreviousScene(Scene_Title)) {
+				if ($dataMap?.autoplayBgm) {
+					$dataMap.bgm.name = $dataMap.autoplayBgmName;
+					AudioManager.playBgm($dataMap.bgm);
+				}
+			}
 
-		if (LyraVultur.AltAudio.autoreplaytitle && !LyraVultur.AltAudio.ignisoverride && (SceneManager?._scene instanceof Scene_Title || SceneManager.isPreviousScene(Scene_Title))) {
-			//console.log("title mus: " + $dataSystem.titleBgm.name);
-			//$dataSystem.titleBgm.name = LyraVultur.AltAudio.bgmTitle.name;
-			AudioManager.playBgm($dataSystem.titleBgm);
+			if (LyraVultur.AltAudio.autoreplaytitle && LyraVultur.AltAudio.ignisoverride) {
+				//console.warn("[AltAudio] Auto Replay Title will NOT function with Ignis Audio Synchronizer enabled!");
+				//return;
+			}
+
+			if (LyraVultur.AltAudio.autoreplaytitle && !LyraVultur.AltAudio.ignisoverride && (SceneManager?._scene instanceof Scene_Title || SceneManager.isPreviousScene(Scene_Title))) {
+				//console.log("title mus: " + $dataSystem.titleBgm.name);
+				//$dataSystem.titleBgm.name = LyraVultur.AltAudio.bgmTitle.name;
+				AudioManager.playBgm($dataSystem.titleBgm);
+			}
 		}
 	}
 
@@ -524,10 +561,18 @@ PluginManager.registerCommand('Lyra_AltAudio', 'ChangeSubByIdPrev', args => {
 
 PluginManager.registerCommand('Lyra_AltAudio', 'ChangeSubByIdRandom', args => {
 	if (LyraVultur.AltAudio.alts.length <= 1) {
+		if (LyraVultur.AltAudio.printdebug) {
+			console.log("[AltAudio] not enough subfolders to pick one randomly!");
+		}
 		return;
 	}
 
-	const rand = Math.floor(Math.random() * LyraVultur.AltAudio.alts.length);
+	//don't pick the same thing that's playing
+	let rand = 0;
+	do {
+		rand = Math.floor(Math.random() * (LyraVultur.AltAudio.alts.length + 1));
+	}
+	while (rand == LyraVultur.AltAudio.curid);
 	LyraVultur.AltAudio.SetAlt(rand);
 });
 
