@@ -4,37 +4,13 @@
 
 /*:
 @target MZ
-@plugindesc [v1.2] Calls a scene to enter name, pronouns, etc for actors.
+@plugindesc [v1.3] Calls a scene to enter name, pronouns, etc for actors.
 @author Lyra Vultur
 @url http://www.koutacles.com.au/
  
 License
 MIT
 <https://github.com/LyraVultur/RPGMakerPlugins/blob/main/LICENSE>
-
-@param maxcharsname
-@text Name Character Limit
-@type number
-@default 12
-@desc Limit names to this many characters or less.
-
-@param maxcharsnick
-@text Nickname Character Limit
-@type number
-@default 14
-@desc Limit nicknames to this many characters or less.
-
-@param maxcharsnoun
-@text Pronoun Character Limit
-@type number
-@default 10
-@desc Limit pronouns to this many characters or less.
-
-@param maxcharsvar
-@text Variable Character Limit
-@type number
-@default 16
-@desc Limit variable entry to this many characters or less.
 
 @param showdebug
 @text Show Debug Info
@@ -48,35 +24,74 @@ MIT
 @default []
 @desc The default pronouns for each actor.
 
+@param CharLimits
+@text Character Limits
+
+@param maxcharsname
+@text Name Character Limit
+@type number
+@default 12
+@desc Limit names to this many characters or less.
+@parent CharLimits
+
+@param maxcharsnick
+@text Nickname Character Limit
+@type number
+@default 14
+@desc Limit nicknames to this many characters or less.
+@parent CharLimits
+
+@param maxcharsnoun
+@text Pronoun Character Limit
+@type number
+@default 10
+@desc Limit pronouns to this many characters or less.
+@parent CharLimits
+
+@param maxcharsvar
+@text Variable Character Limit
+@type number
+@default 16
+@desc Limit variable entry to this many characters or less.
+@parent CharLimits
+
+@param NameInputSetting
+@text NameInput Settings
+
 @param namekeyboard
 @text Add Keyboard Support
 @type boolean
 @default true
 @desc Allows basic keyboard typing during NameInput. Disable if using another plugin that does the same.
+@parent NameInputSetting
 
 @param showinputframes
 @text Show Window Frames
 @type boolean
 @default true
 @desc If off will hide window frames in the NameInput scene.
+@parent NameInputSetting
 
 @param showinputbacks
 @text Show Window Backgrounds
 @type boolean
 @default true
 @desc If off will hide window backgrounds in the NameInput scene.
+@parent NameInputSetting
 
 @param showinputhelp
 @text Show Button Help Window
 @type boolean
 @default true
 @desc If off will hide the button help in the NameInput scene.
+@parent NameInputSetting
 
 @param showinputface
 @text Show Actor Face
 @type boolean
 @default true
 @desc If off will hide actor face in the NameInput scene.
+@parent NameInputSetting
 
 @command InputSceneSettings
 @text Change Input Scene Settings
@@ -383,6 +398,9 @@ CAUTION: If you are already using a plugin that adds keyboard support to the
 change name screen (such as VisuMZ_0_CoreEngine), make sure you disable the
 basic keyboard support in this plugin or you will get rather broken results!
 
+If you want to use this for NPCs, simply make a dummy actor in the database 
+and reference that actor's ID.
+
 You can use text codes to add the correct pronouns into the middle of 
 dialog. They are case sensitive.
 \sub[x]
@@ -530,7 +548,7 @@ var LyraVultur = LyraVultur || {};
 LyraVultur.PartyPronouns = LyraVultur.PartyPronouns || {};
 
 LyraVultur.PartyPronouns.printdebug = {};
-LyraVultur.PartyPronouns.printdebug = JSON.parse(PluginManager.parameters('Lyra_PartyPronouns')['showdebug']);
+LyraVultur.PartyPronouns.printdebug = JSON.parse(PluginManager.parameters('Lyra_PartyPronouns')['showdebug']) && Utils.isOptionValid('test');
 
 LyraVultur.PartyPronouns.showinputface = true;
 LyraVultur.PartyPronouns.showinputface = JSON.parse(PluginManager.parameters('Lyra_PartyPronouns')['showinputface']);
@@ -561,7 +579,6 @@ LyraVultur.PartyPronouns.maxcharsnoun = Number(PluginManager.parameters('Lyra_Pa
 LyraVultur.PartyPronouns.maxcharsvar = Number(PluginManager.parameters('Lyra_PartyPronouns')['maxcharsvar']);
 
 LyraVultur.PartyPronouns.defaults = {};
-LyraVultur.PartyPronouns.parseddefaults = new Array();
 LyraVultur.PartyPronouns.defaults = JSON.parse(PluginManager.parameters('Lyra_PartyPronouns')['defaultpronouns']);
 
 //Keyboard support init (if enabled)
@@ -601,21 +618,30 @@ LyraVultur.PartyPronouns.extendKeySupport(); */
 
 //Extract arrays
 LyraVultur.PartyPronouns.parseDefaultPronouns = function() {
-	var input = LyraVultur.PartyPronouns.defaults;
-	//var data = [];
+	let input = this.defaults;
+    let parsed = [];
 	
 	input.forEach((data) => {
 		let result = JSON.parse(data);
-		LyraVultur.PartyPronouns.parseddefaults.push(result);
+        if (result) {
+            result.actorID = Number(result.actorID);
+        }
+		parsed.push(result);
 	});
+
+    if (parsed.length == 0) {
+        if (this.printdebug) {
+            console.log("[PartyPronouns] No default pronouns entered!");
+        }
+        return;
+    }
+
+    this.defaults = parsed;
 	
-	//console.log(LyraVultur.PartyPronouns.defaults);
-	if (Utils.isOptionValid('test') && LyraVultur.PartyPronouns.printdebug) {
+	if (this.printdebug) {
 		console.log("[PartyPronouns] Default pronouns:");
-		console.log(LyraVultur.PartyPronouns.parseddefaults);
+		console.log(this.defaults);
 	}
-	
-	return;
 };
 LyraVultur.PartyPronouns.parseDefaultPronouns();
 
@@ -770,42 +796,46 @@ PluginManager.registerCommand('Lyra_PartyPronouns', 'SetCharLimitVar', args => {
 });
 
 //==========General
+LyraVultur.PartyPronouns.getActor = function(actid = 0) {
+    return actor = actid >= 1 ? $gameActors.actor(actid) : $gameParty.leader();
+}
+
 LyraVultur.PartyPronouns.showPronounScene = function(actid, output) {
-	const actor = actid >= 1 ? $gameActors.actor(actid) : $gameParty.leader();
+	const actor = this.getActor(actid);
 	
 	if (output != "all") {
-		LyraVultur.PartyPronouns.outputTo = output;
+		this.outputTo = output;
 		SceneManager.push(Scene_Name);
-		SceneManager.prepareNextScene(actor._actorId, LyraVultur.PartyPronouns.maxcharsnoun);
+		SceneManager.prepareNextScene(actor._actorId, this.maxcharsnoun);
 	}
 	else {
-		LyraVultur.PartyPronouns.sceneQueue = ["object", "possessiveD", "possessiveI", "reflexive"];
+		this.sceneQueue = ["object", "possessiveD", "possessiveI", "reflexive"];
 		
-		LyraVultur.PartyPronouns.outputTo = "subject";
-		LyraVultur.PartyPronouns.defaulttext = actor.getPronounSubject();
-		LyraVultur.PartyPronouns.inputdescription = LyraVultur.PartyPronouns.sceneHintQueue.shift();
+		this.outputTo = "subject";
+		this.defaulttext = actor.getPronounSubject();
+		this.inputdescription = this.sceneHintQueue.shift();
 		SceneManager.push(Scene_Name);
-		SceneManager.prepareNextScene(actor._actorId, LyraVultur.PartyPronouns.maxcharsnoun);
+		SceneManager.prepareNextScene(actor._actorId, this.maxcharsnoun);
 	}
 }
 
 LyraVultur.PartyPronouns.showNameScene = function(actid, face, maxchars, border, backs) {
-	const actor = actid >= 1 ? $gameActors.actor(actid) : $gameParty.leader();
+	const actor = this.getActor(actid);
 	
 	SceneManager.push(Scene_Name);
-	SceneManager.prepareNextScene(actor._actorId, maxchars);
+	SceneManager.prepareNextScene(actid, maxchars);
 }
 
 LyraVultur.PartyPronouns.showVariableScene = function(actid, output) {
-	const actor = actid >= 1 ? $gameActors.actor(actid) : $gameParty.leader();
+	const actor = this.getActor(actid);
 	
-	LyraVultur.PartyPronouns.outputTo = output;
+	this.outputTo = output;
 	SceneManager.push(Scene_Name);
 	SceneManager.prepareNextScene(actor._actorId, maxchars);
 }
 
 LyraVultur.PartyPronouns.setAllPronouns = function(actid, sub, obj, pod, poi, rfx, sv, lv, lvp) { 
-	const actor = actid >= 1 ? $gameActors.actor(actid) : $gameParty.leader();
+	const actor = this.getActor(actid);
 	
 	actor.setPronounSubject(sub);
 	actor.setPronounObject(obj);
@@ -818,7 +848,7 @@ LyraVultur.PartyPronouns.setAllPronouns = function(actid, sub, obj, pod, poi, rf
 }
 
 LyraVultur.PartyPronouns.needsPluralVerbs = function(actid) { 
-	const actor = actid >= 1 ? $gameActors.actor(actid) : $gameParty.leader();
+	const actor = this.getActor(actid);
 	
 	return actor.getPronounVerbS();
 }
@@ -837,27 +867,27 @@ Game_Actor.prototype.setup = function(actid) {
 	
 	this.setupRoot(actid);
 	
-	var lookfor = this._actorId;
-	var index = LyraVultur.PartyPronouns.parseddefaults.findIndex(obj => {
-		return Number(obj.actorID) === Number(lookfor);
+	let lookfor = this._actorId;
+	let index = LyraVultur.PartyPronouns.defaults.findIndex(obj => {
+		return obj.actorID === lookfor;
 	});
 	
-	if (LyraVultur.PartyPronouns.parseddefaults.length > 0 && index > -1) {
-		if (Utils.isOptionValid('test') && LyraVultur.PartyPronouns.printdebug) {
-			console.log(this._name + " loaded default pronouns.");
+	if (LyraVultur.PartyPronouns.defaults.length > 0 && index > -1) {
+		if (LyraVultur.PartyPronouns.printdebug) {
+			console.log("[PartyPronouns] " + this._name + " loaded " + this._pnObject + " default pronouns.");
 		}
 		
-		this._pnSubject = LyraVultur.PartyPronouns.parseddefaults[index].subject;
-		this._pnObject = LyraVultur.PartyPronouns.parseddefaults[index].object;
-		this._pnPossessiveD = LyraVultur.PartyPronouns.parseddefaults[index].possessiveD;
-		this._pnPossessiveI = LyraVultur.PartyPronouns.parseddefaults[index].possessiveI;
-		this._pnReflexive = LyraVultur.PartyPronouns.parseddefaults[index].reflexive;
-		this._pnVerbS = LyraVultur.PartyPronouns.parseddefaults[index].sforverbs;
-		this._pnVerbLink = LyraVultur.PartyPronouns.parseddefaults[index].linkingverb;
-		this._pnVerbLinkPast = LyraVultur.PartyPronouns.parseddefaults[index].linkingverbpast;
+		this._pnSubject = LyraVultur.PartyPronouns.defaults[index].subject;
+		this._pnObject = LyraVultur.PartyPronouns.defaults[index].object;
+		this._pnPossessiveD = LyraVultur.PartyPronouns.defaults[index].possessiveD;
+		this._pnPossessiveI = LyraVultur.PartyPronouns.defaults[index].possessiveI;
+		this._pnReflexive = LyraVultur.PartyPronouns.defaults[index].reflexive;
+		this._pnVerbS = LyraVultur.PartyPronouns.defaults[index].sforverbs;
+		this._pnVerbLink = LyraVultur.PartyPronouns.defaults[index].linkingverb;
+		this._pnVerbLinkPast = LyraVultur.PartyPronouns.defaults[index].linkingverbpast;
 	}
 	else {
-		if (Utils.isOptionValid('test') && LyraVultur.PartyPronouns.printdebug) {
+		if (LyraVultur.PartyPronouns.printdebug) {
 			console.log(this._name + " failed to load default pronouns!");
 		}
 	}
@@ -1014,7 +1044,7 @@ Scene_Name.prototype.onInputOk = function() {
 			break;
 			
 			default:
-			if (Utils.isOptionValid('test') && LyraVultur.PartyPronouns.printdebug) {
+			if (LyraVultur.PartyPronouns.printdebug) {
 				console.log("Output to: " + LyraVultur.PartyPronouns.outputTo);
 				console.log("[PartyPronouns] didn't understand mode, doing default");
 			}
@@ -1058,7 +1088,7 @@ Scene_Name.prototype.onInputOk = function() {
 			this._editWindow.refresh();
 			this._inputWindow.refresh();
 			
-			if (Utils.isOptionValid('test') && LyraVultur.PartyPronouns.printdebug) {
+			if (LyraVultur.PartyPronouns.printdebug) {
 				console.log("[PartyPronouns] Queued inputs:");
 				console.log(LyraVultur.PartyPronouns.sceneQueue);
 			}
@@ -1070,7 +1100,7 @@ Scene_Name.prototype.onInputOk = function() {
 	}
 	else {
 		//default behaviour
-		if (Utils.isOptionValid('test') && LyraVultur.PartyPronouns.printdebug) {
+		if (LyraVultur.PartyPronouns.printdebug) {
 			console.log(LyraVultur.PartyPronouns.outputTo);
 			console.log("[PartyPronouns] input mode was undefined! ignoring..");
 		}
@@ -1121,9 +1151,15 @@ Window_NameInput.prototype.processHandling = function() {
 			if (Input.isTriggered("ok") && (keyid < 65 || keyid > 90) && keyid != 32) {
 				this.processOk();
 			}
+
+            if (keyid == 13) {
+				//this.processOk();
+                //LyraVultur.PartyPronouns.lastKeyCode = 0;
+			}
 			
 			//console.log(keyid);
 			
+            //backspace
 			if (keyid == 8) {
 				this.processBack();
 				LyraVultur.PartyPronouns.lastKeyCode = 0;
@@ -1315,7 +1351,7 @@ Window_NameEdit.prototype.drawDesc = function(text) {
     this.resetTextColor();
 	let horz = Math.floor(this._width / 2) - (this.contents.measureTextWidth(text) / 2);
 	let vert = Math.floor(this.lineHeight() / 2);
-    this.drawText(text, horz, vert, 'center');
+    this.drawText(text, horz, vert, this.textWidth(text), 'center');
 };
 
 //==========Input catching
