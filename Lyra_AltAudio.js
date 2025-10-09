@@ -4,7 +4,7 @@
 
 /*:
 @target MZ
-@plugindesc [v1.3] Change the entire soundtrack to alternate ones easily.
+@plugindesc [v1.4] Change the entire soundtrack to alternate ones easily.
 @author Lyra Vultur
 @url http://www.koutacles.com.au/
  
@@ -91,6 +91,13 @@ MIT
 @type boolean
 @default false
 @desc If on, will let the user pick the soundtrack in the options menu.
+@parent OptionsMenu
+
+@param defaultname
+@text Default Name
+@type text
+@default Default
+@desc The name that the default soundtrack shows as in the options menu.
 @parent OptionsMenu
 
 @param useoptionstext
@@ -210,6 +217,8 @@ LyraVultur.AltAudio.useoptionstext = "";
 LyraVultur.AltAudio.useoptionstext = String(PluginManager.parameters('Lyra_AltAudio')['useoptionstext']);
 LyraVultur.AltAudio.visuoptionscat = 0;
 LyraVultur.AltAudio.visuoptionscat = JSON.parse(PluginManager.parameters('Lyra_AltAudio')['visuoptionscat']);
+LyraVultur.AltAudio.defaultname = "";
+LyraVultur.AltAudio.defaultname = String(PluginManager.parameters('Lyra_AltAudio')['defaultname']);
 
 LyraVultur.AltAudio.globalsave = false;
 LyraVultur.AltAudio.globalsave = JSON.parse(PluginManager.parameters('Lyra_AltAudio')['globalsave']);
@@ -236,6 +245,10 @@ LyraVultur.AltAudio.Initialise = function() {
 
 	if (LyraVultur.AltAudio.printdebug) {
 		console.log("[AltAudio] enabled");
+	}
+
+	if (LyraVultur.AltAudio.defaultname.trim().length == 0) {
+		LyraVultur.AltAudio.defaultname = "Default";
 	}
 };
 LyraVultur.AltAudio.Initialise();
@@ -318,24 +331,9 @@ Scene_Title.prototype.start = function() {
 	if (!LyraVultur.AltAudio.globalsave) {
 		LyraVultur.AltAudio.SetAlt(0);
 	}
+
     LyraVultur.AltAudio.Scene_Title_start.call(this);
 };
-
-LyraVultur.AltAudio.Scene_Map_start = Scene_Map.prototype.start;
-Scene_Map.prototype.start = function() {
-	if ($dataMap) {
-		$dataMap.autoplayBgmName = $dataMap.bgm.name;
-	}
-    LyraVultur.AltAudio.Scene_Map_start.call(this);
-};
-
-/*AudioManager.isCurrentBgm = function(bgm) {
-    return (
-        this._currentBgm &&
-        this._bgmBuffer &&
-        this._currentBgm.name === bgm.name
-    );
-};*/
 
 LyraVultur.AltAudio.SetAlt = function(id) {
 	LyraVultur.AltAudio.lastid = LyraVultur.AltAudio.curid;
@@ -371,14 +369,14 @@ LyraVultur.AltAudio.SetAlt = function(id) {
 			if (LyraVultur.AltAudio.autoreplaymap && SceneManager?._scene instanceof Scene_Map) {
 				//$gameMap.autoplay();
 				if ($dataMap?.autoplayBgm) {
-					$dataMap.bgm.name = $dataMap.autoplayBgmName;
+					//$dataMap.bgm.name = $dataMap.autoplayBgmName;
 					AudioManager.playBgm($dataMap.bgm);
 				}
 			}
 
 			if (LyraVultur.AltAudio.autoreplaymap && SceneManager?._scene instanceof Scene_Options && !SceneManager.isPreviousScene(Scene_Title)) {
 				if ($dataMap?.autoplayBgm) {
-					$dataMap.bgm.name = $dataMap.autoplayBgmName;
+					//$dataMap.bgm.name = $dataMap.autoplayBgmName;
 					AudioManager.playBgm($dataMap.bgm);
 				}
 			}
@@ -466,9 +464,9 @@ Window_Options.prototype.makeCommandList = function() {
 };
 
 LyraVultur.AltAudio.GetNameFromId = function(i) {
-	//todo: custom text over Default? interpret underscores as spaces? or add a seperate user list for prettier text?
+	//todo: interpret underscores as spaces? or add a seperate user list for prettier text?
 	if (i < 0) {
-		return "Default";
+		return LyraVultur.AltAudio.defaultname;
 	}
 	const text = LyraVultur.AltAudio.alts[i];
 	if (text == undefined) {
@@ -536,7 +534,7 @@ Window_Options.prototype.changeAltAudio = function(prev, next) {
     //this.changeValue(symbol, value.clamp(0, 100));
 };
 
-//Command Binds
+//==========Command Binds
 PluginManager.registerCommand('Lyra_AltAudio', 'ChangeSubById', args => {
 	const arg0 = JSON.parse(args.id);
 
