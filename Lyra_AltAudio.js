@@ -4,7 +4,7 @@
 
 /*:
 @target MZ
-@plugindesc [v1.4] Change the entire soundtrack to alternate ones easily.
+@plugindesc [v1.41] Change the entire soundtrack to alternate ones easily.
 @author Lyra Vultur
 @url http://www.koutacles.com.au/
  
@@ -335,6 +335,7 @@ Scene_Title.prototype.start = function() {
     LyraVultur.AltAudio.Scene_Title_start.call(this);
 };
 
+//==========Main
 LyraVultur.AltAudio.SetAlt = function(id) {
 	LyraVultur.AltAudio.lastid = LyraVultur.AltAudio.curid;
 	LyraVultur.AltAudio.curid = id;
@@ -386,7 +387,8 @@ LyraVultur.AltAudio.SetAlt = function(id) {
 				//return;
 			}
 
-			if (LyraVultur.AltAudio.autoreplaytitle && !LyraVultur.AltAudio.ignisoverride && (SceneManager?._scene instanceof Scene_Title || SceneManager.isPreviousScene(Scene_Title))) {
+			//if (LyraVultur.AltAudio.autoreplaytitle && !LyraVultur.AltAudio.ignisoverride && (SceneManager?._scene instanceof Scene_Title || SceneManager.isPreviousScene(Scene_Title))) {
+			if (LyraVultur.AltAudio.autoreplaytitle && (SceneManager?._scene instanceof Scene_Title || SceneManager.isPreviousScene(Scene_Title))) {
 				//console.log("title mus: " + $dataSystem.titleBgm.name);
 				//$dataSystem.titleBgm.name = LyraVultur.AltAudio.bgmTitle.name;
 				AudioManager.playBgm($dataSystem.titleBgm);
